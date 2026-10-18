@@ -1,0 +1,66 @@
+<% content_for :title, "Setup" %>
+<h1>Setup</h1>
+
+<section>
+  <h2>Evening reminder</h2>
+  <p class="muted">Once a day, to whoever is already on tomorrow's calls. Same-day calls are not included.</p>
+  <%= form_with url: setup_path, method: :patch do %>
+    <%= label_tag :reminder_time, "Reminder time" %>
+    <%= time_field_tag :reminder_time, venue.reminder_time.utc.strftime("%H:%M") %>
+    <%= submit_tag "Save reminder time" %>
+  <% end %>
+</section>
+
+<section>
+  <h2>Bosses</h2>
+  <p class="muted">These numbers are texted when someone says they can't make a call. A reminder that nobody answers does not text them.</p>
+  <%= form_with url: bosses_path do %>
+    <%= label_tag :mobile, "Boss mobile" %>
+    <%= telephone_field_tag :mobile, nil, required: true %>
+    <%= submit_tag "Add boss" %>
+  <% end %>
+  <ul>
+    <% @bosses.each do |boss| %>
+      <li><%= boss.mobile %> <%= button_to "Delete", boss, method: :delete %></li>
+    <% end %>
+  </ul>
+</section>
+
+<section>
+  <h2>Locations</h2>
+  <%= form_with model: Location.new do |form| %>
+    <%= form.text_field :name, placeholder: "New location", required: true, aria: { label: "New location" } %>
+    <%= form.submit "Add location" %>
+  <% end %>
+  <ul>
+    <% @locations.each do |location| %>
+      <li><%= location.name %> <%= button_to "Delete", location, method: :delete %></li>
+    <% end %>
+  </ul>
+</section>
+
+<section>
+  <h2>Call types</h2>
+  <%= form_with model: CallType.new do |form| %>
+    <%= form.text_field :name, placeholder: "New call type", required: true, aria: { label: "New call type" } %>
+    <%= form.submit "Add call type" %>
+  <% end %>
+  <ul>
+    <% @call_types.each do |call_type| %>
+      <li><%= call_type.name %> <%= button_to "Delete", call_type, method: :delete %></li>
+    <% end %>
+  </ul>
+</section>
+
+<section>
+  <h2>Position labels</h2>
+  <%= form_with model: PositionLabel.new do |form| %>
+    <%= form.text_field :name, placeholder: "New position label", required: true, aria: { label: "New position label" } %>
+    <%= form.submit "Add position label" %>
+  <% end %>
+  <ul>
+    <% @position_labels.each do |label| %>
+      <li><%= label.name %> <%= button_to "Delete", label, method: :delete %></li>
+    <% end %>
+  </ul>
+</section>

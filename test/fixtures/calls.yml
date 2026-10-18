@@ -1,0 +1,6 @@
+load_in:
+  show: saturday
+  location: main
+  call_type: show_call
+  starts_at: <%= Time.utc(2026, 10, 18, 13, 0, 0) %>
+  ends_at: <%= Time.utc(2026, 10, 18, 22, 0, 0) %>

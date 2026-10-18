@@ -1,0 +1,70 @@
+<% content_for :title, @employee.preferred_name %>
+<p><%= link_to "All employees", employees_path %></p>
+<h1 class="<%= "inactive" unless @employee.active? %>"><%= @employee.preferred_name %></h1>
+<% if @employee.legal_name.present? %>
+  <p class="muted"><%= @employee.legal_name %></p>
+<% end %>
+<p>
+  <%= @employee.mobile %>
+  <% if @employee.email.present? %>
+    · <%= @employee.email %>
+  <% end %>
+  <% unless @employee.active? %>
+    · Inactive
+  <% end %>
+</p>
+<% if @employee.notes.present? %>
+  <p><%= @employee.notes %></p>
+<% end %>
+<p>
+  <%= link_to "Edit", edit_employee_path(@employee) %>
+  <%= button_to "Delete", @employee, method: :delete %>
+</p>
+
+<section>
+  <h2>Skills</h2>
+  <% if @employee.employee_skills.any? %>
+    <ul>
+      <% @employee.skills_in_order.each do |employee_skill| %>
+        <li>
+          <%= employee_skill.skill.labeled_name %>
+          <%= form_with model: [ @employee, employee_skill ] do |form| %>
+            <%= form.select :level, (1..5).to_a %>
+            <%= form.text_field :note, placeholder: "Note" %>
+            <%= form.submit "Save" %>
+          <% end %>
+          <%= button_to "Remove", [ @employee, employee_skill ], method: :delete %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p>No skills yet.</p>
+  <% end %>
+
+  <% if @skills.any? %>
+    <%= form_with model: [ @employee, @employee_skill ] do |form| %>
+      <%= form.collection_select :skill_id, @skills, :id, :labeled_name, include_blank: "Choose a skill" %>
+      <%= form.select :level, (1..5).to_a %>
+      <%= form.text_field :note, placeholder: "Note" %>
+      <%= form.submit "Add skill" %>
+    <% end %>
+  <% elsif venue.skill_categories.none? %>
+    <p>Add skills before assigning them. <%= link_to "Skills", skill_categories_path %></p>
+  <% else %>
+    <p class="muted">Every skill is already on this employee.</p>
+  <% end %>
+</section>
+
+<section>
+  <h2>Texts</h2>
+  <%= render "messages/thread", messages: @employee.messages.chronological %>
+  <%= form_with url: employee_messages_path(@employee) do %>
+    <%= label_tag :body, "Text #{@employee.preferred_name}" %>
+    <%= text_field_tag :body, nil, required: true %>
+    <%= submit_tag "Send" %>
+  <% end %>
+  <p class="muted">A one-off text does not ask a question.</p>
+  <% unless Messaging.live? %>
+    <p><%= link_to "Open on the phone", phone_employee_path(@employee) %></p>
+  <% end %>
+</section>

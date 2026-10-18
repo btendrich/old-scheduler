@@ -1,0 +1,38 @@
+<% content_for :title, "Skills" %>
+<h1>Skills</h1>
+
+<%= form_with model: @category do |form| %>
+  <%= form.text_field :name, placeholder: "New category", required: true, aria: { label: "New category" } %>
+  <%= form.submit "Add category" %>
+<% end %>
+
+<% if @categories.any? %>
+  <% @categories.each do |category| %>
+    <section>
+      <h2><%= category.name %></h2>
+      <p>
+        <%= link_to "Edit", edit_skill_category_path(category) %>
+        <%= button_to "Delete", category, method: :delete %>
+      </p>
+      <% if category.skills.any? %>
+        <ul>
+          <% category.skills.each do |skill| %>
+            <li>
+              <%= skill.name %>
+              <%= link_to "Edit", edit_skill_path(skill) %>
+              <%= button_to "Delete", skill, method: :delete %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="muted">No skills in this category.</p>
+      <% end %>
+      <%= form_with model: [ category, Skill.new ] do |form| %>
+        <%= form.text_field :name, placeholder: "New skill", required: true, aria: { label: "New skill in #{category.name}" } %>
+        <%= form.submit "Add skill" %>
+      <% end %>
+    </section>
+  <% end %>
+<% else %>
+  <p>No skill categories yet.</p>
+<% end %>

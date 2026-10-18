@@ -1,0 +1,9 @@
+audio:
+  venue: one
+  name: Audio
+  sort_order: 1
+
+other_audio:
+  venue: other
+  name: Audio
+  sort_order: 1

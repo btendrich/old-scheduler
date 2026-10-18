@@ -1,0 +1,14 @@
+foh:
+  skill_category: audio
+  name: FOH mixer
+  sort_order: 1
+
+deck:
+  skill_category: audio
+  name: Deck audio
+  sort_order: 2
+
+other_foh:
+  skill_category: other_audio
+  name: FOH mixer
+  sort_order: 1

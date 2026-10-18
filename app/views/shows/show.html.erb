@@ -1,0 +1,25 @@
+<% content_for :title, @show.name %>
+<p><%= link_to @show.client.name, @show.client %></p>
+<h1><%= @show.name %></h1>
+<p>
+  <%= link_to "Edit", edit_show_path(@show) %>
+  <%= button_to "Delete", @show, method: :delete %>
+</p>
+
+<section>
+  <h2>Calls</h2>
+  <p><%= link_to "New call", new_show_call_path(@show) %></p>
+  <% if @calls.any? %>
+    <ul>
+      <% @calls.each do |call| %>
+        <li>
+          <%= link_to "#{venue_time(call.starts_at)} – #{venue_time(call.ends_at)}", call %>
+          <%= call.location.name %> · <%= call.call_type.name %>
+          <span class="muted"><%= pluralize(call.call_slots.size, "slot") %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p>No calls yet.</p>
+  <% end %>
+</section>

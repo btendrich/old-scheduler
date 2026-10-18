@@ -1,0 +1,13 @@
+<%# Outbound is a text we sent, so it sits on the left of their phone. Inbound is their reply. %>
+<% if messages.any? %>
+  <ol class="thread">
+    <% messages.each do |message| %>
+      <li class="<%= message.direction %>">
+        <p><%= message.body %></p>
+        <time><%= venue_time(message.sent_at) %></time>
+      </li>
+    <% end %>
+  </ol>
+<% else %>
+  <p class="muted">No texts yet.</p>
+<% end %>

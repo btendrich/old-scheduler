@@ -1,0 +1,11 @@
+deck:
+  venue: one
+  name: Deck
+
+foh:
+  venue: one
+  name: FOH
+
+other_deck:
+  venue: other
+  name: Deck

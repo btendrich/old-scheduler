@@ -1,0 +1,6 @@
+<%= form_with model: client do |form| %>
+  <%= render "shared/errors", record: client %>
+  <%= form.label :name %>
+  <%= form.text_field :name, required: true %>
+  <p><%= form.submit %></p>
+<% end %>

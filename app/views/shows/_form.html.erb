@@ -1,0 +1,6 @@
+<%= form_with model: show, url: show.persisted? ? show_path(show) : client_shows_path(client) do |form| %>
+  <%= render "shared/errors", record: show %>
+  <%= form.label :name %>
+  <%= form.text_field :name, required: true %>
+  <p><%= form.submit %></p>
+<% end %>

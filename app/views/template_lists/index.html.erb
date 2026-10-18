@@ -1,0 +1,31 @@
+<% content_for :title, "Lists" %>
+<h1>Lists</h1>
+<p class="muted">A list is a named order of people. Adding it to a fill keeps that order and skips anyone already on the fill.</p>
+
+<%= form_with model: @list do |form| %>
+  <%= form.label :name, "New list" %>
+  <%= form.text_field :name %>
+  <%= form.submit "Add list" %>
+<% end %>
+
+<% @lists.each do |list| %>
+  <section>
+    <h2><%= list.name %></h2>
+    <%= button_to "Delete list", list, method: :delete %>
+    <ol>
+      <% list.entries.each do |entry| %>
+        <li>
+          <%= entry.employee.preferred_name %>
+          <%= button_to "Up", move_higher_template_list_template_entry_path(list, entry), method: :patch %>
+          <%= button_to "Down", move_lower_template_list_template_entry_path(list, entry), method: :patch %>
+          <%= button_to "Remove", template_list_template_entry_path(list, entry), method: :delete %>
+        </li>
+      <% end %>
+    </ol>
+    <%= form_with url: template_list_template_entries_path(list) do %>
+      <%= label_tag "employee_id_#{list.id}", "Add a person" %>
+      <%= select_tag "employee_id", options_from_collection_for_select(venue.employees.ordered, :id, :preferred_name), include_blank: "Choose a person", id: "employee_id_#{list.id}" %>
+      <%= submit_tag "Add" %>
+    <% end %>
+  </section>
+<% end %>

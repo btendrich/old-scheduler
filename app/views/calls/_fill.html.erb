@@ -1,0 +1,109 @@
+<section>
+  <h2>Fill</h2>
+  <% owned = @call.call_slots.select { |slot| slot.current_assignment.nil? && slot.fill_slot.nil? } %>
+  <% if owned.any? %>
+    <%= form_with model: [ @call, FillProcess.new(offer_timeout_minutes: 60, step_size: 5, step_minutes: 10) ] do |form| %>
+      <fieldset>
+        <legend>Slots this fill owns</legend>
+        <% owned.each do |slot| %>
+          <label>
+            <%= check_box_tag "call_slot_ids[]", slot.id %>
+            <%= slot.position_label.name %>
+          </label>
+        <% end %>
+      </fieldset>
+      <%= form.label :offer_timeout_minutes, "Minutes before an offer times out" %>
+      <%= form.number_field :offer_timeout_minutes, min: 1 %>
+      <%= form.label :mode, "First-response fill" %>
+      <%= form.check_box :mode, {}, "emergency", "normal" %>
+      <%= form.label :step_size, "People texted each step" %>
+      <%= form.number_field :step_size, min: 1 %>
+      <%= form.label :step_minutes, "Minutes before the next step" %>
+      <%= form.number_field :step_minutes, min: 1 %>
+      <%= form.label :custom_window, "Use a custom send window" %>
+      <%= form.check_box :custom_window %>
+      <%= form.label :window_start, "Window starts" %>
+      <%= form.time_field :window_start %>
+      <%= form.label :window_end, "Window ends" %>
+      <%= form.time_field :window_end %>
+      <%= form.submit "Start a fill" %>
+    <% end %>
+    <p class="muted">Leave the window blank to use the venue hours. Matching start and end means all day.</p>
+  <% else %>
+    <p class="muted">No open slot is waiting for a fill.</p>
+  <% end %>
+
+  <% @fill_processes.each do |process| %>
+    <section>
+      <h3>
+        <%= process.slots.map { |owned_slot| owned_slot.call_slot.position_label.name }.join(", ") %>
+        · <%= process.status.humanize %>
+        <% if process.emergency? %>
+          · First response, <%= process.step_size %> at a time
+        <% end %>
+      </h3>
+      <% if process.status == "pending" %>
+        <%= button_to "Start filling", start_fill_process_path(process) %>
+      <% elsif process.emergency? && !process.finished? %>
+        <%= button_to "Run the next step", emergency_step_fill_process_path(process) %>
+      <% end %>
+      <% if process.status == "needs_more_names" %>
+        <p class="warning">Needs more names.</p>
+      <% end %>
+
+      <ol>
+        <% process.candidates.ordered.each do |candidate| %>
+          <% availability = CallAvailability.new(candidate.employee, @call) %>
+          <li>
+            <%= candidate.employee.preferred_name %>
+            · <%= availability.label %>
+            · <%= candidate.state.humanize %>
+            <% if candidate.state == "pending" %>
+              <%= button_to "Up", move_higher_fill_process_fill_candidate_path(process, candidate), method: :patch %>
+              <%= button_to "Down", move_lower_fill_process_fill_candidate_path(process, candidate), method: :patch %>
+              <%= button_to "Remove", fill_process_fill_candidate_path(process, candidate), method: :delete %>
+            <% end %>
+          </li>
+        <% end %>
+      </ol>
+
+      <%= form_with url: fill_process_fill_candidates_path(process) do %>
+        <%= label_tag "employee_id_#{process.id}", "Add a person" %>
+        <%= select_tag "employee_id", options_from_collection_for_select(venue.employees.ordered, :id, :preferred_name), include_blank: "Choose a person", id: "employee_id_#{process.id}" %>
+        <%= submit_tag "Add" %>
+      <% end %>
+
+      <% if @skills.any? %>
+        <%= form_with url: add_skill_fill_process_path(process) do %>
+          <%= label_tag "skill_id_#{process.id}", "Add a skill" %>
+          <%= select_tag "skill_id", options_from_collection_for_select(@skills, :id, :labeled_name), id: "skill_id_#{process.id}" %>
+          <%= label_tag "minimum_level_#{process.id}", "Minimum level" %>
+          <%= number_field_tag :minimum_level, 1, min: 1, max: 5, id: "minimum_level_#{process.id}" %>
+          <%= submit_tag "Add skill" %>
+        <% end %>
+      <% end %>
+
+      <% if @templates.any? %>
+        <%= form_with url: add_template_fill_process_path(process) do %>
+          <%= label_tag "template_list_id_#{process.id}", "Add a list" %>
+          <%= select_tag "template_list_id", options_from_collection_for_select(@templates, :id, :name), id: "template_list_id_#{process.id}" %>
+          <%= submit_tag "Add list" %>
+        <% end %>
+      <% end %>
+
+      <% if process.events.any? %>
+        <h4>Log</h4>
+        <ul>
+          <% process.events.recent.limit(12).each do |event| %>
+            <li>
+              <%= event.kind.humanize %>
+              <%= "· #{event.employee.preferred_name}" if event.employee %>
+              · <%= event.detail %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </section>
+  <% end %>
+  <p><%= link_to "Edit lists", template_lists_path %></p>
+</section>

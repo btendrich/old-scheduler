@@ -1,0 +1,21 @@
+<% content_for :title, @client.name %>
+<p><%= link_to "All clients", clients_path %></p>
+<h1><%= @client.name %></h1>
+<p>
+  <%= link_to "Edit", edit_client_path(@client) %>
+  <%= button_to "Delete", @client, method: :delete %>
+</p>
+
+<section>
+  <h2>Shows</h2>
+  <p><%= link_to "New show", new_client_show_path(@client) %></p>
+  <% if @shows.any? %>
+    <ul>
+      <% @shows.each do |show| %>
+        <li><%= link_to show.name, show %> <span class="muted"><%= pluralize(show.calls.size, "call") %></span></li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p>No shows yet.</p>
+  <% end %>
+</section>

@@ -1,0 +1,38 @@
+<% content_for :title, "Assign #{@slot.position_label.name}" %>
+<p><%= link_to "Back to call", @call %></p>
+<h1>Assign <%= @slot.position_label.name %></h1>
+<p><%= venue_time(@call.starts_at) %> – <%= venue_time(@call.ends_at) %></p>
+
+<%= render "shared/errors", record: @assignment %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Person</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @availabilities.each do |row| %>
+      <tr>
+        <td class="<%= "inactive" unless row.employee.active? %>"><%= row.employee.preferred_name %></td>
+        <td class="<%= "warning" unless row.status == :available %>"><%= row.label %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% placeable = @availabilities.select(&:placeable?) %>
+<% if placeable.any? %>
+  <%= form_with model: [ @slot, @assignment ] do |form| %>
+    <%= form.label :employee_id, "Person" %>
+    <%= form.select :employee_id, placeable.map { |row| [ row.option_label, row.employee.id ] }, include_blank: "Choose a person" %>
+    <%= form.label :confirmation, "Confirmation" %>
+    <%= form.select :confirmation, Assignment.confirmation_choices %>
+    <%= form.label :note, "Note" %>
+    <%= form.text_field :note %>
+    <%= form.submit "Assign" %>
+  <% end %>
+<% else %>
+  <p>Everyone listed is already on this call.</p>
+<% end %>

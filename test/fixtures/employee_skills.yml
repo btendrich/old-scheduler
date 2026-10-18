@@ -1,0 +1,10 @@
+alex_foh:
+  employee: alex
+  skill: foh
+  level: 4
+  note: Can run the festival console
+
+blair_deck:
+  employee: blair
+  skill: deck
+  level: 2

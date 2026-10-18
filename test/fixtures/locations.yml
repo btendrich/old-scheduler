@@ -1,0 +1,7 @@
+main:
+  venue: one
+  name: Main stage
+
+other_room:
+  venue: other
+  name: Other stage

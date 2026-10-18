@@ -1,0 +1,8 @@
+<% content_for :title, "Edit #{@category.name}" %>
+<h1>Edit category</h1>
+<%= form_with model: @category do |form| %>
+  <%= render "shared/errors", record: @category %>
+  <%= form.label :name %>
+  <%= form.text_field :name, required: true %>
+  <p><%= form.submit %></p>
+<% end %>

@@ -1,0 +1,23 @@
+<%= form_with model: employee do |form| %>
+  <%= render "shared/errors", record: employee %>
+
+  <%= form.label :preferred_name %>
+  <%= form.text_field :preferred_name, required: true %>
+
+  <%= form.label :legal_name %>
+  <%= form.text_field :legal_name %>
+
+  <%= form.label :mobile %>
+  <%= form.telephone_field :mobile, required: true %>
+
+  <%= form.label :email %>
+  <%= form.email_field :email %>
+
+  <%= form.label :notes %>
+  <%= form.text_area :notes, rows: 3 %>
+
+  <%= form.label :active, "Active" %>
+  <%= form.check_box :active %>
+
+  <p><%= form.submit %></p>
+<% end %>

@@ -1,0 +1,30 @@
+alex:
+  venue: one
+  preferred_name: Alex
+  legal_name: Alex Rivera
+  mobile: "555-0100"
+  email: alex@example.com
+  notes: Prefers days
+  active: true
+  sort_order: 1
+
+blair:
+  venue: one
+  preferred_name: Blair
+  mobile: "555-0101"
+  active: true
+  sort_order: 2
+
+casey:
+  venue: one
+  preferred_name: Casey
+  mobile: "555-0102"
+  active: false
+  sort_order: 3
+
+outsider:
+  venue: other
+  preferred_name: Outsider
+  mobile: "555-0199"
+  active: true
+  sort_order: 1

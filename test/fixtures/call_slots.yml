@@ -1,0 +1,9 @@
+deck_slot:
+  call: load_in
+  position_label: deck
+  sort_order: 1
+
+foh_slot:
+  call: load_in
+  position_label: foh
+  sort_order: 2

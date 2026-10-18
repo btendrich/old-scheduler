@@ -1,0 +1,3 @@
+<% content_for :title, "Edit #{@show.name}" %>
+<h1>Edit <%= @show.name %></h1>
+<%= render "form", show: @show, client: @show.client %>

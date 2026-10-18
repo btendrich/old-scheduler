@@ -1,0 +1,8 @@
+<% content_for :title, "Edit #{@skill.name}" %>
+<h1>Edit skill</h1>
+<%= form_with model: @skill do |form| %>
+  <%= render "shared/errors", record: @skill %>
+  <%= form.label :name %>
+  <%= form.text_field :name, required: true %>
+  <p><%= form.submit %></p>
+<% end %>

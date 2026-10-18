@@ -1,0 +1,4 @@
+<% content_for :title, Current.user.venue.name %>
+
+<h1><%= Current.user.venue.name %></h1>
+<p>Venue time <time><%= Time.current.strftime("%-I:%M %p %Z") %></time></p>

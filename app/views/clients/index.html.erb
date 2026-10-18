@@ -1,0 +1,12 @@
+<% content_for :title, "Clients" %>
+<h1>Clients</h1>
+<p><%= link_to "New client", new_client_path %></p>
+<% if @clients.any? %>
+  <ul>
+    <% @clients.each do |client| %>
+      <li><%= link_to client.name, client %> <span class="muted"><%= pluralize(client.shows.size, "show") %></span></li>
+    <% end %>
+  </ul>
+<% else %>
+  <p>No clients yet.</p>
+<% end %>

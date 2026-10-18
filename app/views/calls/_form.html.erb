@@ -1,0 +1,21 @@
+<% if venue.locations.none? || venue.call_types.none? %>
+  <p>Add a location and a call type in <%= link_to "Setup", setup_path %> before scheduling a call.</p>
+<% else %>
+  <%= form_with model: call, url: call.persisted? ? call_path(call) : show_calls_path(show) do |form| %>
+    <%= render "shared/errors", record: call %>
+
+    <%= form.label :location_id, "Location" %>
+    <%= form.collection_select :location_id, venue.locations.order(:name), :id, :name %>
+
+    <%= form.label :call_type_id, "Call type" %>
+    <%= form.collection_select :call_type_id, venue.call_types.order(:name), :id, :name %>
+
+    <%= form.label :starts_at, "Starts" %>
+    <%= form.datetime_field :starts_at, required: true %>
+
+    <%= form.label :ends_at, "Ends" %>
+    <%= form.datetime_field :ends_at, required: true %>
+
+    <p><%= form.submit %></p>
+  <% end %>
+<% end %>
