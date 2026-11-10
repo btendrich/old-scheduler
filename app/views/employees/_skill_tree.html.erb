@@ -1,0 +1,59 @@
+<section class="mt-8">
+  <h2 class="mt-0">Skills</h2>
+  <% if categories.any? %>
+    <ul class="mt-4 grid gap-4 lg:grid-cols-2">
+      <% categories.each do |category| %>
+        <li class="card">
+          <h3 class="mt-0"><%= category.name %></h3>
+          <% if category.skills.any? %>
+            <ul class="skill-branches">
+              <% category.skills.each do |skill| %>
+                <% held = employee.employee_skills.detect { |row| row.skill_id == skill.id } %>
+                <li class="skill-row">
+                  <span class="truncate font-medium"><%= skill.name %></span>
+                  <span class="flex w-[7.5rem] shrink-0 items-center" role="group" aria-label="<%= skill.name %> level">
+                    <% (1..5).each do |level| %>
+                      <% chosen = held.present? && held.level == level %>
+                      <% label = "#{skill.name}, #{level_name(level)}" %>
+                      <% if held %>
+                        <%= button_to employee_employee_skill_path(employee, held), method: :patch, form_class: "inline-flex", class: "level-pip #{'is-on' if chosen}", params: { employee_skill: { level: level } }, aria: { label: label, pressed: chosen }, title: level_name(level) do %>
+                          <%= level_icon(level) %>
+                        <% end %>
+                      <% else %>
+                        <%= button_to employee_employee_skills_path(employee), method: :post, form_class: "inline-flex", class: "level-pip", params: { employee_skill: { skill_id: skill.id, level: level } }, aria: { label: label }, title: level_name(level) do %>
+                          <%= level_icon(level) %>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </span>
+                  <% if held %>
+                    <div class="skill-note" data-controller="skill-note">
+                      <button type="button" class="skill-note-text" data-skill-note-target="text" data-action="skill-note#open" aria-label="<%= skill.name %> note"><%= held.note %></button>
+                      <%= form_with model: [ employee, held ], html: { hidden: true, class: "skill-note-form", data: { skill_note_target: "form" } } do |form| %>
+                        <%= form.hidden_field :level %>
+                        <%= form.text_field :note, class: "skill-note-input", autocomplete: "off", aria: { label: "#{skill.name} note" }, data: { skill_note_target: "input", action: "blur->skill-note#commit keydown->skill-note#key" } %>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <div class="skill-note"><span class="skill-note-text"></span></div>
+                  <% end %>
+                  <span class="skill-clear-slot">
+                    <% if held %>
+                      <%= button_to [ employee, held ], method: :delete, class: "skill-clear", form_class: "inline-flex", aria: { label: "Remove #{skill.name}" } do %>
+                        <%= remove_icon %>
+                      <% end %>
+                    <% end %>
+                  </span>
+                </li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="muted mt-2">No skills in this category.</p>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="mt-2">Add skills before assigning them. <%= link_to "Skills", skill_categories_path %></p>
+  <% end %>
+</section>

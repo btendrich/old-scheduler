@@ -59,13 +59,22 @@ class ReplyTest < ActiveSupport::TestCase
     assert_equal "hello", employees(:alex).messages.order(:sent_at, :id).last.body
   end
 
-  test "a second question is refused while one is open" do
+  test "a second question waits behind the one already asked" do
     assignment = book(employees(:alex))
     Question.open_manual_confirmation(assignment)
-    sent = employees(:alex).messages.count
 
-    assert_nil Question.open_fill_offer(employee: employees(:alex), call: calls(:load_in))
-    assert_equal sent, employees(:alex).messages.count
+    queued = Question.open_fill_offer(employee: employees(:alex), call: later_call)
+
+    assert_nil queued.opened_at
+    assert_equal assignment.id, employees(:alex).open_question.assignment_id
+    assert_match "1 more question waiting", employees(:alex).messages.last.body
+    assert_match "Reply YES to confirm", employees(:alex).messages.last.body
+
+    Messaging::Receive.new.call(employee: employees(:alex), body: "YES")
+
+    assert queued.reload.opened_at
+    assert_equal "fill_offer", employees(:alex).reload.open_question.kind
+    assert_match "Reply YES or NO", employees(:alex).messages.last.body
   end
 
   test "a fill YES books the first open slot" do
@@ -112,7 +121,7 @@ class ReplyTest < ActiveSupport::TestCase
   end
 
   test "an open question shows as waiting, after a decline and a time conflict" do
-    Question.open_fill_offer(employee: employees(:casey), call: calls(:load_in))
+    Question.open_fill_offer(employee: employees(:casey), call: later_call)
     assert_equal :waiting_on_another_text, CallAvailability.new(employees(:casey), calls(:load_in)).status
 
     declined = book(employees(:alex), confirmation: "declined")
@@ -127,7 +136,7 @@ class ReplyTest < ActiveSupport::TestCase
   end
 
   test "the picker uses the same waiting and declined flags" do
-    Question.open_fill_offer(employee: employees(:alex), call: calls(:load_in))
+    Question.open_fill_offer(employee: employees(:alex), call: later_call)
     Question.open_fill_offer(employee: employees(:blair), call: calls(:load_in))
     Messaging::Receive.new.call(employee: employees(:blair), body: "NO")
 

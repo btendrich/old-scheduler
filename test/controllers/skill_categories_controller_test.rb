@@ -3,6 +3,11 @@ require "test_helper"
 class SkillCategoriesControllerTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:one) }
 
+  test "the skills page stays on the desk live stream" do
+    get skill_categories_path
+    assert_desk_live
+  end
+
   test "adding a category and a skill" do
     post skill_categories_path, params: { skill_category: { name: "Lighting" } }
     category = venues(:one).skill_categories.find_by!(name: "Lighting")

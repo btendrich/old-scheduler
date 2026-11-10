@@ -54,6 +54,17 @@ class AssignmentTest < ActiveSupport::TestCase
     assert book(call_slots(:deck_slot), employees(:blair))
   end
 
+  test "changing a confirmed or asked person is warned" do
+    confirmed = book(call_slots(:deck_slot), employees(:alex), confirmation: "confirmed_by_desk")
+    assert_equal "Rivera, Alex is confirmed for this slot. Assign someone else?", confirmed.replacement_warning
+
+    confirmed.release!
+    asked = book(call_slots(:deck_slot), employees(:blair))
+    asked.update!(booking_text_sent_at: Time.current)
+
+    assert_equal "Cole, Blair has already been asked about this slot. Assign someone else?", asked.replacement_warning
+  end
+
   test "a note is stripped" do
     assignment = book(call_slots(:deck_slot), employees(:alex))
     assignment.update!(note: "  called  ")

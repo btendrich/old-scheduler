@@ -21,12 +21,17 @@ default: &default
 
 
 development:
-  <<: *default
-  database: scheduler_development
-  host: <%= ENV.fetch("POSTGRES_HOST", "localhost") %>
-  port: <%= ENV.fetch("POSTGRES_PORT", 5434) %>
-  username: <%= ENV.fetch("POSTGRES_USER", "scheduler") %>
-  password: <%= ENV.fetch("POSTGRES_PASSWORD", "scheduler") %>
+  primary: &primary_development
+    <<: *default
+    database: scheduler_development
+    host: <%= ENV.fetch("POSTGRES_HOST", "localhost") %>
+    port: <%= ENV.fetch("POSTGRES_PORT", 5434) %>
+    username: <%= ENV.fetch("POSTGRES_USER", "scheduler") %>
+    password: <%= ENV.fetch("POSTGRES_PASSWORD", "scheduler") %>
+  queue:
+    <<: *primary_development
+    database: scheduler_development_queue
+    migrations_paths: db/queue_migrate
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.

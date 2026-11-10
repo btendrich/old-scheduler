@@ -1,0 +1,39 @@
+<section data-call-desk-target="panel" data-panel="assignment" data-slot-id="<%= slot.id %>" hidden>
+  <h2 class="mt-0"><%= assignment.employee.name %></h2>
+  <p class="text-sm text-stone-600"><%= slot.label_name %></p>
+  <dl class="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+    <dt class="text-stone-500">Assigned</dt>
+    <dd><%= venue_time(assignment.created_at) %></dd>
+    <dt class="text-stone-500">Confirmation</dt>
+    <dd>
+      <%= assignment.confirmation_label %>
+      <%= status_badge("Cannot make it") if assignment.confirmation == "declined" %>
+      <%= status_badge("Needs review") if assignment.needs_review? %>
+    </dd>
+    <dt class="text-stone-500">Source</dt>
+    <dd><%= assignment.source_label %></dd>
+    <% if assignment.booking_text_sent_at %>
+      <dt class="text-stone-500">Asked</dt>
+      <dd><%= venue_time(assignment.booking_text_sent_at) %></dd>
+    <% end %>
+    <% if assignment.open_question %>
+      <dt class="text-stone-500">Waiting</dt>
+      <dd><%= status_badge("Waiting for a reply") %> <%= assignment.open_question.label %></dd>
+    <% end %>
+    <% if (reminder = assignment.reminder_question) %>
+      <dt class="text-stone-500">Reminder</dt>
+      <dd><%= reminder.reminder_status %></dd>
+    <% end %>
+  </dl>
+  <% if assignment.boss_notices.any? %>
+    <p class="muted mt-3 text-sm"><%= assignment.boss_notices.first.body %></p>
+  <% end %>
+  <%= form_with model: assignment, class: "mt-4 flex flex-wrap items-end gap-2" do |form| %>
+    <%= form.label :confirmation, "Confirmation", class: "mt-0" %>
+    <%= form.select :confirmation, Assignment.confirmation_choices %>
+    <%= form.label :note, "Note", class: "mt-0" %>
+    <%= form.text_field :note, value: assignment.note %>
+    <%= form.submit "Update", class: "mt-0" %>
+  <% end %>
+  <%= button_to "Release", release_assignment_path(assignment), method: :patch, class: "mt-2" %>
+</section>

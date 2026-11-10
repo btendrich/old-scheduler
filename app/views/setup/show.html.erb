@@ -1,66 +1,84 @@
 <% content_for :title, "Setup" %>
-<h1>Setup</h1>
+<%= page_header "Setup", lede: "Venue hours for the evening reminder, who gets a backout warning, and the lists a call is built from." %>
 
-<section>
-  <h2>Evening reminder</h2>
-  <p class="muted">Once a day, to whoever is already on tomorrow's calls. Same-day calls are not included.</p>
-  <%= form_with url: setup_path, method: :patch do %>
-    <%= label_tag :reminder_time, "Reminder time" %>
-    <%= time_field_tag :reminder_time, venue.reminder_time.utc.strftime("%H:%M") %>
-    <%= submit_tag "Save reminder time" %>
+<section class="card">
+  <h2 class="mt-0">Evening reminder</h2>
+  <p class="muted text-sm">Once a day, to whoever is already on tomorrow's calls. Same-day calls are not included.</p>
+  <%= form_with url: setup_path, method: :patch, class: "mt-3 flex flex-wrap items-end gap-2" do %>
+    <%= label_tag :reminder_time, "Reminder time", class: "mt-0" %>
+    <%= time_field_tag :reminder_time, venue.reminder_time.utc.strftime("%H:%M"), class: "w-32" %>
+    <%= submit_tag "Save reminder time", class: "mt-0" %>
   <% end %>
 </section>
 
-<section>
-  <h2>Bosses</h2>
-  <p class="muted">These numbers are texted when someone says they can't make a call. A reminder that nobody answers does not text them.</p>
-  <%= form_with url: bosses_path do %>
-    <%= label_tag :mobile, "Boss mobile" %>
+<section class="card mt-4">
+  <h2 class="mt-0">Bosses</h2>
+  <p class="muted text-sm">These numbers are texted when someone says they can't make a call. A reminder that nobody answers does not text them.</p>
+  <%= form_with url: bosses_path, class: "mt-3 flex flex-wrap items-end gap-2" do %>
+    <%= label_tag :mobile, "Boss mobile", class: "mt-0" %>
     <%= telephone_field_tag :mobile, nil, required: true %>
-    <%= submit_tag "Add boss" %>
+    <%= submit_tag "Add boss", class: "mt-0" %>
   <% end %>
-  <ul>
+  <ul class="rows">
     <% @bosses.each do |boss| %>
-      <li><%= boss.mobile %> <%= button_to "Delete", boss, method: :delete %></li>
+      <li><span class="tabular-nums"><%= boss.mobile %></span> <%= button_to "Delete", boss, method: :delete, class: "ml-auto" %></li>
     <% end %>
   </ul>
 </section>
 
-<section>
-  <h2>Locations</h2>
-  <%= form_with model: Location.new do |form| %>
+<section class="card mt-4">
+  <h2 class="mt-0">Locations</h2>
+  <%= form_with model: Location.new, class: "mt-3 flex flex-wrap items-end gap-2" do |form| %>
     <%= form.text_field :name, placeholder: "New location", required: true, aria: { label: "New location" } %>
-    <%= form.submit "Add location" %>
+    <%= form.submit "Add location", class: "mt-0" %>
   <% end %>
-  <ul>
+  <ul class="rows">
     <% @locations.each do |location| %>
-      <li><%= location.name %> <%= button_to "Delete", location, method: :delete %></li>
+      <li>
+        <%= form_with model: location, class: "flex min-w-0 flex-1 flex-wrap items-center gap-2" do |form| %>
+          <%= form.text_field :name, required: true, aria: { label: "Rename #{location.name}" }, class: "mt-0 w-64" %>
+          <%= form.submit "Rename", class: "mt-0" %>
+        <% end %>
+        <%= button_to "Delete", location, method: :delete %>
+      </li>
     <% end %>
   </ul>
 </section>
 
-<section>
-  <h2>Call types</h2>
-  <%= form_with model: CallType.new do |form| %>
+<section class="card mt-4">
+  <h2 class="mt-0">Call types</h2>
+  <%= form_with model: CallType.new, class: "mt-3 flex flex-wrap items-end gap-2" do |form| %>
     <%= form.text_field :name, placeholder: "New call type", required: true, aria: { label: "New call type" } %>
-    <%= form.submit "Add call type" %>
+    <%= form.submit "Add call type", class: "mt-0" %>
   <% end %>
-  <ul>
+  <ul class="rows">
     <% @call_types.each do |call_type| %>
-      <li><%= call_type.name %> <%= button_to "Delete", call_type, method: :delete %></li>
+      <li>
+        <%= form_with model: call_type, class: "flex min-w-0 flex-1 flex-wrap items-center gap-2" do |form| %>
+          <%= form.text_field :name, required: true, aria: { label: "Rename #{call_type.name}" }, class: "mt-0 w-64" %>
+          <%= form.submit "Rename", class: "mt-0" %>
+        <% end %>
+        <%= button_to "Delete", call_type, method: :delete %>
+      </li>
     <% end %>
   </ul>
 </section>
 
-<section>
-  <h2>Position labels</h2>
-  <%= form_with model: PositionLabel.new do |form| %>
+<section class="card mt-4">
+  <h2 class="mt-0">Position labels</h2>
+  <%= form_with model: PositionLabel.new, class: "mt-3 flex flex-wrap items-end gap-2" do |form| %>
     <%= form.text_field :name, placeholder: "New position label", required: true, aria: { label: "New position label" } %>
-    <%= form.submit "Add position label" %>
+    <%= form.submit "Add position label", class: "mt-0" %>
   <% end %>
-  <ul>
+  <ul class="rows">
     <% @position_labels.each do |label| %>
-      <li><%= label.name %> <%= button_to "Delete", label, method: :delete %></li>
+      <li>
+        <%= form_with model: label, class: "flex min-w-0 flex-1 flex-wrap items-center gap-2" do |form| %>
+          <%= form.text_field :name, required: true, aria: { label: "Rename #{label.name}" }, class: "mt-0 w-64" %>
+          <%= form.submit "Rename", class: "mt-0" %>
+        <% end %>
+        <%= button_to "Delete", label, method: :delete %>
+      </li>
     <% end %>
   </ul>
 </section>

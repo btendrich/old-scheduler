@@ -21,6 +21,7 @@ class Backout
       note: note.presence || assignment.note
     )
     assignment.release!
+    assignment.record_audit("backed_out", actor: assignment.employee)
     Messaging::Deliver.new.call(employee: assignment.employee, body: CallText.removed(assignment.call_slot.call))
     Boss.warn(assignment)
     assignment.call_slot.fill_slot&.fill_process&.advance

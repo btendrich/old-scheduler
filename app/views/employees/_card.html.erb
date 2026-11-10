@@ -1,0 +1,55 @@
+<article class="employee-card">
+  <header class="flex items-center gap-2">
+    <h3 class="mt-0"><%= employee.name %></h3>
+    <% unless employee.active? %><span class="list-default">Inactive</span><% end %>
+  </header>
+  <p class="mt-0.5 text-stone-600"><%= employee_contact(employee) %></p>
+  <% if employee.notes.present? %>
+    <p class="mt-2 line-clamp-4 whitespace-pre-wrap text-stone-700"><%= employee.notes %></p>
+  <% end %>
+
+  <h4>Skills</h4>
+  <% skills = employee.skills_in_order %>
+  <% if skills.any? %>
+    <% skills.group_by { |row| row.skill.skill_category }.each do |category, rows| %>
+      <p class="employee-card-category"><%= category.name %></p>
+      <ul class="m-0 list-none p-0">
+        <% rows.each do |row| %>
+          <li class="flex items-baseline gap-2 py-0.5">
+            <span class="translate-y-0.5 text-emerald-600"><%= level_icon(row.level) %></span>
+            <span class="font-medium"><%= row.skill.name %></span>
+            <span class="text-stone-500"><%= level_name(row.level) %></span>
+            <% if row.note.present? %><span class="min-w-0 truncate text-stone-500"><%= row.note %></span><% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% else %>
+    <p class="mt-1 text-stone-500">No skills yet.</p>
+  <% end %>
+
+  <h4>Work</h4>
+  <dl>
+    <dt>Last worked</dt>
+    <dd><%= record.last_worked ? call_summary(record.last_worked) : "None yet" %></dd>
+    <% if record.in_progress.any? %>
+      <dt>On a call now</dt>
+      <dd><%= record.in_progress.map { |call| call_summary(call) }.to_sentence %></dd>
+    <% end %>
+    <dt>Coming up</dt>
+    <dd>
+      <% if record.next_call %>
+        <%= call_summary(record.next_call) %>
+        <% if record.later_count.positive? %>
+          <span class="block text-stone-500">and <%= record.later_count %> more</span>
+        <% end %>
+      <% else %>
+        Nothing scheduled
+      <% end %>
+    </dd>
+    <% record.counts.each do |months, count| %>
+      <dt>Last <%= months %> months</dt>
+      <dd><%= count %></dd>
+    <% end %>
+  </dl>
+</article>

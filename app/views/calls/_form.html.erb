@@ -16,6 +16,21 @@
     <%= form.label :ends_at, "Ends" %>
     <%= form.datetime_field :ends_at, required: true %>
 
+    <% unless call.persisted? %>
+      <% if local_assigns[:linkable_calls]&.any? %>
+        <%= label_tag :link_call_id, "Link slots from" %>
+        <%= select_tag :link_call_id,
+              options_from_collection_for_select(linkable_calls, :id, :desk_label, params[:link_call_id]),
+              include_blank: "No link — new empty slots",
+              class: "max-w-md" %>
+        <p class="muted text-sm">Copies that call's positions and links each new slot to its source for a package offer.</p>
+      <% end %>
+
+      <%= label_tag :slot_count, "Slots" %>
+      <%= number_field_tag :slot_count, params.fetch(:slot_count, 1), min: 0, max: 20, required: true, class: "w-24" %>
+      <p class="muted text-sm">Used only when not linking. They start unassigned. A position can be set once the call exists.</p>
+    <% end %>
+
     <p><%= form.submit %></p>
   <% end %>
 <% end %>

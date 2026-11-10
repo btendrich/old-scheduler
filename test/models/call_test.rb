@@ -1,6 +1,10 @@
 require "test_helper"
+require "turbo/broadcastable/test_helper"
 
 class CallTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+  include Turbo::Broadcastable::TestHelper
+
   test "the calendar file uses the venue clock and leaves the slot off" do
     ics = calls(:load_in).to_ics
 
@@ -71,5 +75,64 @@ class CallTest < ActiveSupport::TestCase
     added = calls(:load_in).call_slots.create!(position_label: position_labels(:deck))
 
     assert_equal 3, added.sort_order
+  end
+
+  test "a booking refreshes the open desk" do
+    venue = venues(:one)
+    before = venue.live_revision
+
+    perform_enqueued_jobs do
+      assert_turbo_stream_broadcasts venue do
+        call_slots(:deck_slot).assignments.create!(
+          employee: employees(:alex), source: "manual", confirmation: "unconfirmed"
+        )
+      end
+    end
+
+    assert_not_equal before, venue.reload.live_revision
+    assert capture_turbo_stream_broadcasts(venue).any? { |node| node["action"] == "refresh" }
+  end
+
+  test "progress counts confirmed, waiting, and fill-owned slots" do
+    call = calls(:load_in)
+    empty = call.progress
+    assert_equal 2, empty.slots
+    assert_equal 0, empty.confirmed
+    assert_equal 0, empty.awaiting
+    assert_equal 0, empty.on_fill
+    assert_equal 0, empty.confirmed_percent
+
+    confirmed = call_slots(:deck_slot).assignments.create!(
+      employee: employees(:alex), source: "manual", confirmation: "confirmed_by_desk"
+    )
+    waiting = call_slots(:foh_slot).assignments.create!(
+      employee: employees(:blair), source: "manual", confirmation: "unconfirmed"
+    )
+    waiting.ask_or_confirm
+    process = call.fill_processes.create!(offer_timeout_minutes: 30)
+    process.slots.create!(call_slot: call_slots(:foh_slot))
+
+    counted = call.reload.progress
+    assert_equal 1, counted.confirmed
+    assert_equal 1, counted.awaiting
+    assert_equal 1, counted.on_fill
+    assert_equal 50, counted.confirmed_percent
+    assert_equal employees(:alex), confirmed.employee
+  end
+
+  test "a slot can be unassigned and a review item names the reply" do
+    slot = calls(:load_in).call_slots.create!
+    assert_equal "Unassigned", slot.label_name
+
+    call_slots(:deck_slot).assignments.create!(
+      employee: employees(:alex),
+      source: "manual",
+      confirmation: "declined",
+      needs_review: true
+    )
+
+    items = calls(:load_in).reload.review_items
+    assert_includes items, "Rivera, Alex needs review"
+    assert_includes items, "Rivera, Alex declined this slot"
   end
 end

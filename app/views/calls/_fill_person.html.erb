@@ -1,0 +1,8 @@
+<% availability = local_assigns[:availability] %>
+<% unavailable = availability && availability.status != :available %>
+<%= tag.li class: [ "tree-node", "fill-person", ("inactive" unless employee.active?), ("is-selected" if local_assigns[:selected]), ("is-unavailable" if unavailable) ], aria: { selected: local_assigns[:selected] || false }, data: { action: "click->fill-source#choose", employee_id: employee.id } do %>
+  <span class="tree-joint" aria-hidden="true"></span>
+  <span class="list-order w-8 shrink-0 tabular-nums"><%= employee.sort_order %></span>
+  <span class="fill-person-name min-w-0 flex-1 truncate"><%= employee_option_name(employee) %></span>
+  <%= status_badge(availability.label) if unavailable %>
+<% end %>

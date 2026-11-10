@@ -1,25 +1,44 @@
 class AssignmentsController < ApplicationController
   def new
     @slot = venue_slot
-    return if filled_slot_redirect
+    return if on_fill_redirect || filled_slot_redirect
 
     prepare_form
   end
 
   def create
     @slot = venue_slot
-    return if filled_slot_redirect
+    return if on_fill_redirect
 
-    @assignment = @slot.assignments.new(create_params)
-    @assignment.source = "manual"
-    if @assignment.save
-      @assignment.ask_or_confirm
-      @slot.fill_slot&.fill_process&.advance
-      redirect_to @slot.call
-    else
-      prepare_form
-      render :new, status: :unprocessable_entity
+    current = @slot.current_assignment
+    if current && !ActiveModel::Type::Boolean.new.cast(params[:replace])
+      return if filled_slot_redirect
     end
+    if current && current.employee_id.to_s == create_params[:employee_id].to_s
+      redirect_to @slot.call
+      return
+    end
+    if current && !current.editable_name?
+      redirect_to @slot.call, alert: "Cancel the text before changing who is on this slot."
+      return
+    end
+
+    Assignment.transaction do
+      if current
+        # Never asked — drop the pencil. A cancel or decline keeps its own history.
+        current.destroy!
+        @slot.association(:current_assignment).reset
+      end
+      @assignment = @slot.assignments.new(create_params)
+      @assignment.source = "manual"
+      @assignment.save!
+      @assignment.ask_or_confirm unless @assignment.confirmation == "unconfirmed"
+      @slot.fill_slot&.fill_process&.advance
+    end
+    redirect_to @slot.call
+  rescue ActiveRecord::RecordInvalid
+    prepare_form
+    render :new, status: :unprocessable_entity
   end
 
   def update
@@ -36,8 +55,21 @@ class AssignmentsController < ApplicationController
   def release
     assignment = Assignment.for_venue(venue).current.find(params[:id])
     assignment.release!
-    assignment.open_question&.close!(reason: "desk")
+    assignment.dismiss_questions
+    assignment.record_audit("released")
     assignment.call_slot.fill_slot&.fill_process&.advance
+    redirect_to assignment.call_slot.call
+  end
+
+  def ask
+    assignment = venue_assignment
+    assignment.ask_or_confirm if assignment.editable_name?
+    redirect_to assignment.call_slot.call
+  end
+
+  def cancel
+    assignment = venue_assignment
+    assignment.cancel_text! if !assignment.released_at && !assignment.editable_name?
     redirect_to assignment.call_slot.call
   end
 
@@ -54,6 +86,13 @@ class AssignmentsController < ApplicationController
       @call = @slot.call
       @assignment ||= @slot.assignments.new(source: "manual", confirmation: "unconfirmed")
       @availabilities = CallAvailability.build_all(venue.employees.ordered, @call)
+    end
+
+    def on_fill_redirect
+      return false unless @slot.fill_slot
+
+      redirect_to @slot.call, alert: "That slot is on a fill."
+      true
     end
 
     def filled_slot_redirect

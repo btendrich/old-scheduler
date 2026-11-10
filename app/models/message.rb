@@ -8,6 +8,10 @@ class Message < ApplicationRecord
   validates :direction, inclusion: { in: DIRECTIONS }
   validates :body, :mobile, :sent_at, presence: true
 
+  def venue
+    employee&.venue
+  end
+
   scope :chronological, -> { order(:sent_at, :id) }
 
   def outbound?

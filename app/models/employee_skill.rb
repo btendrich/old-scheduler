@@ -2,6 +2,10 @@ class EmployeeSkill < ApplicationRecord
   belongs_to :employee
   belongs_to :skill
 
+  def venue
+    employee&.venue
+  end
+
   normalizes :note, with: ->(value) { value.strip.presence }
 
   validates :level, inclusion: { in: 1..5 }

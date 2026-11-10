@@ -1,0 +1,21 @@
+<% content_for :title, "Audit" %>
+<%= page_header "Audit", lede: "What the desk, a fill, a person, or a job did." %>
+
+<% if @audit_logs.any? %>
+  <ul class="rows">
+    <% zone = ActiveSupport::TimeZone[venue.time_zone] %>
+    <% @audit_logs.each do |entry| %>
+      <li class="items-start">
+        <span class="shrink-0 text-sm tabular-nums text-stone-500"><%= entry.created_at.in_time_zone(zone).strftime("%a %-m/%-d %-I:%M %p") %></span>
+        <%= status_badge(entry.kind.humanize) %>
+        <span class="text-sm font-medium"><%= entry.actor_name %></span>
+        <span class="text-sm text-stone-700"><%= entry.detail %></span>
+        <% if entry.call %>
+          <%= link_to call_summary(entry.call), entry.call, class: "ml-auto text-sm" %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p class="text-stone-500">Nothing recorded yet.</p>
+<% end %>

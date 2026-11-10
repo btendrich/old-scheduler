@@ -1,21 +1,25 @@
 <% content_for :title, @client.name %>
-<p><%= link_to "All clients", clients_path %></p>
-<h1><%= @client.name %></h1>
-<p>
-  <%= link_to "Edit", edit_client_path(@client) %>
+<p class="text-sm"><%= link_to "All clients", clients_path, class: "no-underline hover:underline" %></p>
+<%= page_header @client.name do %>
+  <%= link_to "Edit", edit_client_path(@client), class: "btn-primary" %>
   <%= button_to "Delete", @client, method: :delete %>
-</p>
+<% end %>
 
 <section>
-  <h2>Shows</h2>
-  <p><%= link_to "New show", new_client_show_path(@client) %></p>
+  <div class="mb-3 flex items-end justify-between gap-3">
+    <h2 class="mt-0">Shows</h2>
+    <%= link_to "New show", new_client_show_path(@client), class: "btn-primary" %>
+  </div>
   <% if @shows.any? %>
-    <ul>
+    <ul class="rows mt-0">
       <% @shows.each do |show| %>
-        <li><%= link_to show.name, show %> <span class="muted"><%= pluralize(show.calls.size, "call") %></span></li>
+        <li>
+          <%= link_to show.name, show, class: "font-medium text-stone-950 no-underline hover:text-sky-800" %>
+          <span class="muted text-sm"><%= pluralize(show.calls.size, "call") %></span>
+        </li>
       <% end %>
     </ul>
   <% else %>
-    <p>No shows yet.</p>
+    <p class="text-stone-500">No shows yet.</p>
   <% end %>
 </section>

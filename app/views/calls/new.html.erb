@@ -1,3 +1,3 @@
 <% content_for :title, "New call" %>
-<h1>New call for <%= @show.name %></h1>
-<%= render "form", call: @call, show: @show %>
+<%= page_header "New call for #{@show.name}" %>
+<%= render "form", call: @call, show: @show, linkable_calls: @linkable_calls %>

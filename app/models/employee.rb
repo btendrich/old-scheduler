@@ -7,13 +7,13 @@ class Employee < ApplicationRecord
   has_many :questions, dependent: :destroy
   has_many :fill_candidates, dependent: :destroy
   has_many :template_entries, dependent: :destroy
-  has_one :open_question, -> { where(closed_at: nil) }, class_name: "Question"
+  has_one :open_question, -> { where(closed_at: nil).where.not(opened_at: nil) }, class_name: "Question"
 
-  normalizes :preferred_name, :legal_name, :mobile, with: ->(value) { value.strip.presence }
+  normalizes :first_name, :last_name, :preferred_name, :mobile, with: ->(value) { value.strip.presence }
   normalizes :email, with: ->(value) { value.strip.downcase.presence }
   normalizes :notes, with: ->(value) { value.strip.presence }
 
-  validates :preferred_name, :mobile, :sort_order, presence: true
+  validates :first_name, :last_name, :mobile, :sort_order, presence: true
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
 
   scope :ordered, -> { order(:sort_order, :id) }
@@ -35,6 +35,18 @@ class Employee < ApplicationRecord
     find_each.detect { |employee| Messaging::Phone.same?(employee.mobile, number) }
   end
 
+  # "Rivera, Alex", or "Rivera, Al" when a preferred name is set.
+  def name
+    given = preferred_name.presence || first_name
+    return given.to_s if last_name.blank?
+
+    "#{last_name}, #{given}"
+  end
+
+  def search_text
+    [ name, first_name, last_name, preferred_name ].compact_blank.uniq.join(" ")
+  end
+
   def question_label
     question = open_question
     return "No open question" unless question
@@ -52,6 +64,13 @@ class Employee < ApplicationRecord
 
   def skills_in_order
     employee_skills.select(&:persisted?).sort_by { |row| [ row.skill.skill_category.sort_order, row.skill.sort_order, row.id ] }
+  end
+
+  # A few of the strongest skills, plus how many were left off so a row stays one line.
+  def highest_skills(limit: 2)
+    ranked = employee_skills.select(&:persisted?).sort_by { |row| [ -row.level, row.skill.name.to_s.downcase, row.id ] }
+    shown = ranked.first(limit)
+    { names: shown.map { |row| "#{row.skill.name} #{row.level}" }.join(", "), more: ranked.size - shown.size }
   end
 
   private

@@ -1,0 +1,22 @@
+<div class="list-controls">
+  <input type="search" placeholder="Search" aria-label="Search" data-people-pool-target="query" data-action="input->people-pool#filter">
+  <label>
+    Skill
+    <select data-people-pool-target="skill" data-action="change->people-pool#filter">
+      <option value="">Any</option>
+      <% skills.each do |skill| %>
+        <option value="<%= skill.id %>"><%= skill.labeled_name %></option>
+      <% end %>
+    </select>
+  </label>
+  <label>
+    Minimum level
+    <input type="number" min="1" max="5" value="1" class="w-16" data-people-pool-target="level" data-action="input->people-pool#filter">
+  </label>
+  <div class="flex flex-wrap gap-1">
+    <button type="button" class="is-active" data-action="people-pool#sort" data-people-pool-by-param="venue">Venue order</button>
+    <button type="button" data-action="people-pool#sort" data-people-pool-by-param="name">Name</button>
+    <button type="button" data-action="people-pool#sort" data-people-pool-by-param="level">Skill level</button>
+  </div>
+  <p class="muted w-full text-sm" data-people-pool-target="note" hidden>Showing a sort. Venue order is unchanged.</p>
+</div>

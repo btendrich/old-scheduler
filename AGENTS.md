@@ -11,6 +11,12 @@ Global instructions for coding agents. A repo-local `AGENTS.md` or `PLAN.md` ove
 - Jobs: Solid Queue. Cache/cable: Solid Cache / Solid Cable. Do not add Redis, Sidekiq, or another broker unless asked.
 - Concurrent I/O: `async` (or whatever the repo already uses). Do not open long-lived sockets from Puma request threads.
 
+## Desk live
+
+The application layout owns the live stream, the pulse, and the disconnect warning. Do not add a page-local copy. The warning keeps pulsing and reloads the page when the server answers.
+
+New records the desk can see implement `#venue` (usually `belongs_to :venue`). `ApplicationRecord` touches that venue so every open page remorphs. Call `skip_venue_desk!` only for auth rows or high-frequency log lines that have their own stream.
+
 ## Rails way
 
 - Convention over configuration. Default generators, default paths, default layout.

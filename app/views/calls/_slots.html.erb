@@ -1,0 +1,143 @@
+<% groups = @fill_processes.to_h { |process| [ process.id, process.slots.map(&:call_slot_id) ] } %>
+<% availability = @pool.index_by { |row| row.employee.id } %>
+<% lists = ([ @templates.find(&:default?) ] + @templates.reject(&:default?)).compact %>
+<section>
+  <header class="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <h2 class="mt-0">Slots</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= button_to "Add slot", call_call_slots_path(@call), class: "mt-0", form: { class: "m-0" } %>
+      <button type="button" data-call-desk-target="clearSelection" data-action="call-desk#clear" disabled>Clear selection</button>
+    </div>
+  </header>
+  <% if @call.call_slots.any? %>
+    <div class="overflow-x-auto rounded-lg bg-white ring-1 ring-stone-200">
+      <table class="slot-table">
+        <thead>
+          <tr>
+            <th class="slot-check">
+              <input type="checkbox" data-call-desk-target="selectAll" data-action="call-desk#toggleAll" aria-label="Select all slots">
+            </th>
+            <th class="slot-index">#</th>
+            <th>Position</th>
+            <th>Person</th>
+            <th class="slot-commit"><span class="sr-only">Ask or cancel</span></th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-controller="sortable" data-sortable-url-value="<%= reorder_call_call_slots_path(@call) %>" data-sortable-group-value="slots">
+          <% @call.call_slots.each do |slot| %>
+            <% assignment = slot.current_assignment %>
+            <% process = slot.fill_slot&.fill_process %>
+            <% kind = process ? "fill:#{process.id}" : (assignment ? "assigned:#{slot.id}" : "open") %>
+            <% group = process ? groups.fetch(process.id, [ slot.id ]).join(",") : nil %>
+            <% released = slot.assignments.select { |record| slot_history?(record) }.sort_by { |record| [ record.released_at, record.id ] }.reverse %>
+            <% status = slot_list_status(assignment) %>
+            <%= tag.tr class: "slot-row slot-tone-#{slot_tone(status)}", aria: { selected: false }, data: { call_desk_target: "row", action: "click->call-desk#choose", slot_id: slot.id, kind: kind, group: group, label: slot.label_name, draggable: true, sortable_id: slot.id } do %>
+              <td class="slot-check">
+                <input type="checkbox" data-call-desk-target="box" data-action="click->call-desk#toggleBox" aria-label="Select slot <%= slot.sort_order %>">
+              </td>
+              <td class="slot-index" data-slot-index><%= slot.sort_order %></td>
+              <td>
+                <%= form_with model: slot, class: "m-0" do |form| %>
+                  <%= form.collection_select :position_label_id, venue.position_labels.order(:name), :id, :name, { include_blank: "Unassigned", selected: slot.position_label_id }, { aria: { label: "Position for slot #{slot.sort_order}" }, data: { action: "change->call-desk#saveLabel" } } %>
+                <% end %>
+              </td>
+              <td>
+                <% if process || (assignment && !assignment.editable_name?) %>
+                  <button type="button" class="assign-picker-locked" disabled aria-label="Assign slot <%= slot.sort_order %>"><%= assignment ? employee_option_name(assignment.employee) : "Assign…" %></button>
+                <% else %>
+                  <%= form_with url: call_slot_assignments_path(slot), class: "m-0" do %>
+                    <%= hidden_field_tag :replace, "1" %>
+                    <%= hidden_field_tag "assignment[confirmation]", "unconfirmed" %>
+                    <%= tag.div class: "assign-picker", data: { controller: "assign-picker", assign_picker_current_value: assignment&.employee_id, assign_picker_warning_value: assignment&.replacement_warning } do %>
+                      <button type="button" class="assign-picker-button" data-assign-picker-target="button" data-action="assign-picker#toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="Assign slot <%= slot.sort_order %>">
+                        <span data-assign-picker-target="label"><%= assignment ? employee_option_name(assignment.employee) : "Assign…" %></span>
+                      </button>
+                      <div class="assign-menu" data-assign-picker-target="menu" hidden>
+                        <input type="search" placeholder="Search all employees" aria-label="Search employees" data-assign-picker-target="query" data-action="input->assign-picker#filter keydown->assign-picker#search">
+                        <p class="assign-empty" data-assign-picker-target="empty" hidden>No one matches.</p>
+                        <ul class="assign-results" role="listbox" data-assign-picker-target="results" hidden>
+                          <% @employees.each do |employee| %>
+                            <%= render "assign_option", employee: employee, availability: availability[employee.id] %>
+                          <% end %>
+                        </ul>
+                        <ul class="assign-browse" data-assign-picker-target="browse">
+                          <% lists.each do |list| %>
+                            <%= render "assign_flyout", name: list.name, employees: list.entries.map(&:employee), availability: availability %>
+                          <% end %>
+                          <%= render "assign_flyout", name: "All employees", employees: @employees, availability: availability %>
+                        </ul>
+                      </div>
+                      <%= hidden_field_tag "assignment[employee_id]", assignment&.employee_id, data: { assign_picker_target: "id" } %>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </td>
+              <td class="slot-commit">
+                <% if assignment && !process %>
+                  <% if assignment.editable_name? %>
+                    <%= button_to "Ask", ask_assignment_path(assignment), method: :post, class: "slot-ask-button", form: { class: "m-0" }, aria: { label: "Ask #{assignment.employee.name}" } %>
+                  <% else %>
+                    <% cancel_message = "Cancel #{assignment.employee.name} for this call? They'll be texted that they're off." %>
+                    <%= button_to cancel_assignment_path(assignment), method: :post, class: "slot-cancel-button", form: { class: "m-0" }, data: { action: "click->call-desk#cancelAssignment", message: cancel_message }, aria: { label: "Cancel #{assignment.employee.name}" } do %>
+                      <%= icon(:x, html_class: "size-4") %>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </td>
+              <td>
+                <div class="flex flex-wrap items-center gap-2">
+                  <%= status_badge(status) %>
+                  <% if process %>
+                    <span class="text-sm text-stone-600">Fill <%= process.number %></span>
+                  <% end %>
+                  <% if slot.package_held? %>
+                    <span class="text-sm text-stone-600">Held by package</span>
+                  <% end %>
+                </div>
+                <% if (link_name = slot_link_label(slot)) %>
+                  <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-stone-600">
+                    <span>Linked · <%= link_name %></span>
+                    <%= button_to "Unlink", call_slot_slot_link_path(slot), method: :delete, class: "mt-0 text-sm", form: { class: "m-0" } %>
+                  </div>
+                <% elsif @linkable_slots.any? && !process && !slot.package_held? %>
+                  <%= form_with url: call_slot_slot_link_path(slot), class: "mt-1 flex flex-wrap items-center gap-2" do %>
+                    <%= select_tag :partner_slot_id, options_for_select(@linkable_slots), include_blank: "Link to…", class: "text-sm", aria: { label: "Link slot #{slot.sort_order}" } %>
+                    <%= submit_tag "Link", class: "mt-0 text-sm" %>
+                  <% end %>
+                <% end %>
+                <% if assignment %>
+                  <%= status_badge("Cannot make it") if assignment.confirmation == "declined" %>
+                  <%= status_badge("Needs review") if assignment.needs_review? %>
+                <% end %>
+                <% if released.any? %>
+                  <ul class="slot-history">
+                    <% released.each do |record| %>
+                      <li><%= record.employee.name %> · <%= slot_release_label(record) %></li>
+                    <% end %>
+                  </ul>
+                <% end %>
+              </td>
+              <td class="slot-actions">
+                <div class="flex items-center justify-end gap-0.5">
+                  <%= drag_handle %>
+                  <% if slot.removable? %>
+                    <%= button_to call_slot_path(slot), method: :delete, class: "slot-icon-button", form: { class: "m-0" }, aria: { label: "Remove slot #{slot.sort_order}" } do %>
+                      <%= icon(:trash, html_class: "size-4") %>
+                    <% end %>
+                  <% else %>
+                    <button type="button" class="slot-icon-button" disabled aria-label="Remove slot <%= slot.sort_order %>"><%= icon(:trash, html_class: "size-4") %></button>
+                  <% end %>
+                </div>
+              </td>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="text-stone-500">No slots yet. Headcount is the number of slots.</p>
+  <% end %>
+
+</section>

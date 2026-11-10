@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -30,6 +30,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.index ["call_slot_id"], name: "index_assignments_one_current_per_slot", unique: true, where: "(released_at IS NULL)"
     t.index ["employee_id"], name: "index_assignments_on_employee_id"
     t.index ["fill_process_id"], name: "index_assignments_on_fill_process_id"
+  end
+
+  create_table "audit_logs", force: :cascade do |t|
+    t.bigint "venue_id", null: false
+    t.string "actor_type"
+    t.bigint "actor_id"
+    t.string "actor_name", null: false
+    t.string "system_name"
+    t.string "subject_type"
+    t.bigint "subject_id"
+    t.string "subject_name"
+    t.bigint "call_id"
+    t.bigint "fill_process_id"
+    t.string "kind", null: false
+    t.string "detail", null: false
+    t.datetime "created_at", null: false
+    t.index ["actor_type", "actor_id"], name: "index_audit_logs_on_actor_type_and_actor_id"
+    t.index ["call_id", "created_at"], name: "index_audit_logs_on_call_id_and_created_at"
+    t.index ["call_id"], name: "index_audit_logs_on_call_id"
+    t.index ["fill_process_id"], name: "index_audit_logs_on_fill_process_id"
+    t.index ["subject_type", "subject_id"], name: "index_audit_logs_on_subject_type_and_subject_id"
+    t.index ["venue_id", "created_at"], name: "index_audit_logs_on_venue_id_and_created_at"
+    t.index ["venue_id"], name: "index_audit_logs_on_venue_id"
   end
 
   create_table "boss_notices", force: :cascade do |t|
@@ -55,7 +78,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
 
   create_table "call_slots", force: :cascade do |t|
     t.bigint "call_id", null: false
-    t.bigint "position_label_id", null: false
+    t.bigint "position_label_id"
     t.integer "sort_order", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -108,8 +131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
 
   create_table "employees", force: :cascade do |t|
     t.bigint "venue_id", null: false
-    t.string "preferred_name", null: false
-    t.string "legal_name"
+    t.string "preferred_name"
     t.string "mobile", null: false
     t.string "email"
     t.text "notes"
@@ -117,6 +139,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.integer "sort_order", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "first_name", null: false
+    t.string "last_name"
     t.index ["venue_id", "sort_order"], name: "index_employees_on_venue_id_and_sort_order"
     t.index ["venue_id"], name: "index_employees_on_venue_id"
   end
@@ -142,6 +166,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.string "detail"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "times", default: 1, null: false
     t.index ["employee_id"], name: "index_fill_events_on_employee_id"
     t.index ["fill_process_id"], name: "index_fill_events_on_fill_process_id"
   end
@@ -160,6 +185,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.integer "step_size", default: 5, null: false
     t.integer "step_minutes", default: 10, null: false
     t.datetime "next_step_at"
+    t.integer "number", null: false
+    t.index ["call_id", "number"], name: "index_fill_processes_on_call_id_and_number", unique: true
     t.index ["call_id"], name: "index_fill_processes_on_call_id"
   end
 
@@ -219,16 +246,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.bigint "assignment_id"
     t.string "kind", null: false
     t.boolean "needs_review", default: false, null: false
-    t.datetime "opened_at", null: false
+    t.datetime "opened_at"
     t.datetime "closed_at"
     t.string "close_reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "fill_process_id"
+    t.integer "position", null: false
     t.index ["assignment_id"], name: "index_questions_on_assignment_id"
     t.index ["call_id"], name: "index_questions_on_call_id"
     t.index ["employee_id"], name: "index_questions_on_employee_id"
-    t.index ["employee_id"], name: "index_questions_one_open_per_employee", unique: true, where: "(closed_at IS NULL)"
+    t.index ["employee_id"], name: "index_questions_one_asked_per_employee", unique: true, where: "((closed_at IS NULL) AND (opened_at IS NOT NULL))"
     t.index ["fill_process_id"], name: "index_questions_on_fill_process_id"
   end
 
@@ -269,6 +297,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.index ["skill_category_id"], name: "index_skills_on_skill_category_id"
   end
 
+  create_table "slot_links", force: :cascade do |t|
+    t.bigint "call_slot_id", null: false
+    t.bigint "partner_slot_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["call_slot_id"], name: "index_slot_links_on_call_slot_id", unique: true
+    t.index ["partner_slot_id"], name: "index_slot_links_on_partner_slot_id", unique: true
+  end
+
   create_table "template_entries", force: :cascade do |t|
     t.bigint "template_list_id", null: false
     t.bigint "employee_id", null: false
@@ -285,7 +322,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "default", default: false, null: false
     t.index ["venue_id"], name: "index_template_lists_on_venue_id"
+    t.index ["venue_id"], name: "index_template_lists_one_default_per_venue", unique: true, where: "\"default\""
   end
 
   create_table "users", force: :cascade do |t|
@@ -313,6 +352,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
   add_foreign_key "assignments", "call_slots"
   add_foreign_key "assignments", "employees"
   add_foreign_key "assignments", "fill_processes"
+  add_foreign_key "audit_logs", "calls"
+  add_foreign_key "audit_logs", "fill_processes"
+  add_foreign_key "audit_logs", "venues"
   add_foreign_key "boss_notices", "assignments"
   add_foreign_key "boss_notices", "venues"
   add_foreign_key "bosses", "venues"
@@ -346,6 +388,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_043000) do
   add_foreign_key "shows", "clients"
   add_foreign_key "skill_categories", "venues"
   add_foreign_key "skills", "skill_categories"
+  add_foreign_key "slot_links", "call_slots"
+  add_foreign_key "slot_links", "call_slots", column: "partner_slot_id"
   add_foreign_key "template_entries", "employees"
   add_foreign_key "template_entries", "template_lists"
   add_foreign_key "template_lists", "venues"

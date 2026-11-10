@@ -1,0 +1,10 @@
+<li class="assign-flyout" data-assign-picker-target="flyout" data-action="mouseenter->assign-picker#showFlyout mouseleave->assign-picker#hideFlyout">
+  <button type="button" class="assign-flyout-button" data-action="focus->assign-picker#showFlyout" aria-haspopup="listbox" aria-expanded="false">
+    <%= name %>
+  </button>
+  <ul class="assign-flyout-menu" role="listbox" hidden>
+    <% employees.each do |employee| %>
+      <%= render "assign_option", employee: employee, availability: availability[employee.id] %>
+    <% end %>
+  </ul>
+</li>

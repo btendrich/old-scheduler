@@ -1,12 +1,16 @@
 <% content_for :title, "Clients" %>
-<h1>Clients</h1>
-<p><%= link_to "New client", new_client_path %></p>
+<%= page_header "Clients" do %>
+  <%= link_to "New client", new_client_path, class: "btn-primary" %>
+<% end %>
 <% if @clients.any? %>
-  <ul>
+  <ul class="rows">
     <% @clients.each do |client| %>
-      <li><%= link_to client.name, client %> <span class="muted"><%= pluralize(client.shows.size, "show") %></span></li>
+      <li>
+        <%= link_to client.name, client, class: "font-medium text-stone-950 no-underline hover:text-sky-800" %>
+        <span class="muted text-sm"><%= pluralize(client.shows.size, "show") %></span>
+      </li>
     <% end %>
   </ul>
 <% else %>
-  <p>No clients yet.</p>
+  <p class="text-stone-500">No clients yet.</p>
 <% end %>

@@ -68,6 +68,22 @@ class CallAvailabilityTest < ActiveSupport::TestCase
     assert_not row.placeable?
   end
 
+  test "a text already out for this call waits for a reply" do
+    Question.open_fill_offer(employee: employees(:casey), call: calls(:load_in))
+
+    row = availability(employees(:casey))
+    assert_equal :waiting_on_this_text, row.status
+    assert_equal "Waiting for a reply", row.label
+    assert row.placeable?
+    assert_equal :waiting_on_this_text, CallAvailability.build_all([ employees(:casey) ], calls(:load_in)).first.status
+
+    other = overlapping_call
+    Question.open_fill_offer(employee: employees(:blair), call: other)
+
+    assert_equal :waiting_on_another_text, availability(employees(:blair)).status
+    assert_equal :waiting_on_another_text, CallAvailability.build_all([ employees(:blair) ], calls(:load_in)).first.status
+  end
+
   test "the picker list uses the same statuses" do
     call_slots(:deck_slot).assignments.create!(
       employee: employees(:alex), source: "manual", confirmation: "unconfirmed"
@@ -76,8 +92,8 @@ class CallAvailabilityTest < ActiveSupport::TestCase
 
     assert_equal [ employees(:alex), employees(:blair), employees(:casey) ], rows.map(&:employee)
     assert_equal :on_this_call, rows.first.status
-    assert_equal "Alex - On this call", rows.first.option_label
-    assert_equal "Casey (inactive) - Available", rows.last.option_label
+    assert_equal "Rivera, Alex - On this call", rows.first.option_label
+    assert_equal "Ng, Casey (inactive) - Available", rows.last.option_label
   end
 
   private

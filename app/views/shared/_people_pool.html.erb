@@ -1,0 +1,26 @@
+<section class="people-pool" data-controller="people-pool">
+  <h2 class="mt-0">People</h2>
+  <%= render "shared/list_controls", skills: skills %>
+  <% if local_assigns[:templates]&.any? %>
+    <ul class="pool-list mb-3" data-controller="sortable" data-sortable-group-value="crew" data-sortable-pull-value="clone" data-sortable-put-value="false" data-sortable-sort-value="false">
+      <% templates.each do |template| %>
+        <%= tag.li data: { draggable: true, template_id: template.id, people_pool_target: "template", name: template.name } do %>
+          <%= drag_handle %>
+          <span class="font-medium"><%= template.name %></span>
+          <span class="muted">List</span>
+        <% end %>
+      <% end %>
+    </ul>
+  <% end %>
+  <ul class="pool-list" data-controller="sortable" data-sortable-group-value="crew" data-sortable-pull-value="clone" data-sortable-put-value="false" data-sortable-sort-value="false" data-people-pool-target="list">
+    <% employees.each_with_index do |employee, index| %>
+      <% availability = local_assigns[:availabilities]&.at(index) %>
+      <%= tag.li class: ("inactive" unless employee.active?), data: { draggable: true, employee_id: employee.id, people_pool_target: "person", name: employee.search_text, venue_order: employee.sort_order, levels: employee.employee_skills.to_h { |row| [ row.skill_id, row.level ] } } do %>
+        <%= drag_handle %>
+        <span class="font-medium"><%= employee.name %></span>
+        <%= "(inactive)" unless employee.active? %>
+        <%= status_badge(availability.label) if availability %>
+      <% end %>
+    <% end %>
+  </ul>
+</section>

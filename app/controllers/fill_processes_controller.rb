@@ -25,6 +25,24 @@ class FillProcessesController < ApplicationController
     redirect_to process.call
   end
 
+  def stop
+    process = venue_process
+    process.stop!
+    redirect_to process.call
+  end
+
+  def destroy
+    process = venue_process
+    call = process.call
+    if process.running?
+      redirect_to call, alert: "Stop the fill before deleting it."
+      return
+    end
+
+    process.destroy!
+    redirect_to call
+  end
+
   def emergency_step
     process = venue_process
     process.run_emergency_step!
@@ -43,6 +61,21 @@ class FillProcessesController < ApplicationController
     template = venue.template_lists.find(params[:template_list_id])
     process.add_template(template)
     redirect_to process.call
+  end
+
+  def add_slots
+    process = venue_process
+    ids = Array(params[:call_slot_ids]).reject(&:blank?).uniq
+    slots = process.call.call_slots.where(id: ids).includes(:current_assignment, :fill_slot)
+    if ids.empty? || slots.size != ids.size || slots.any? { |slot| slot.current_assignment || slot.fill_slot }
+      redirect_to process.call, alert: "Choose open slots that are not already on a fill."
+      return
+    end
+
+    process.claim(slots)
+    redirect_to process.call
+  rescue ActiveRecord::RecordInvalid => error
+    redirect_to process.call, alert: error.record.errors.full_messages.to_sentence
   end
 
   private

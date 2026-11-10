@@ -1,12 +1,16 @@
 class FillCandidate < ApplicationRecord
   STATES = %w[pending asked parked declined passed booked timed_out].freeze
 
-  belongs_to :fill_process
+  belongs_to :fill_process, touch: true
   belongs_to :employee
 
   validates :position, presence: true
   validates :state, inclusion: { in: STATES }
   validates :employee_id, uniqueness: { scope: :fill_process_id }
+
+  def venue
+    fill_process&.venue
+  end
 
   scope :ordered, -> { order(:position, :id) }
 

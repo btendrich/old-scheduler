@@ -14,7 +14,9 @@ Rails.application.routes.draw do
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
   root "home#show"
+  get "live", to: "live#show"
 
+  resources :audit_logs, only: [ :index ]
   get "setup", to: "setup#show"
   patch "setup", to: "setup#update"
   resources :bosses, only: [ :create, :destroy ]
@@ -27,6 +29,9 @@ Rails.application.routes.draw do
   post "phone/:employee_id/emergency_step", to: "phone#emergency_step", as: :phone_emergency_step
 
   resources :employees do
+    collection do
+      patch :reorder
+    end
     member do
       patch :move_higher
       patch :move_lower
@@ -43,7 +48,11 @@ Rails.application.routes.draw do
     resources :shows, only: [ :show, :new, :create, :edit, :update, :destroy ], shallow: true do
         resources :calls, only: [ :show, :new, :create, :edit, :update, :destroy ], shallow: true do
           resources :fill_processes, only: [ :create ]
-          resources :call_slots, only: [ :create, :destroy ] do
+          resources :call_slots, only: [ :create, :update, :destroy ] do
+            collection do
+              patch :reorder
+            end
+            resource :slot_link, only: [ :create, :destroy ]
             resources :assignments, only: [ :new, :create ]
           end
         end
@@ -53,17 +62,25 @@ Rails.application.routes.draw do
   resources :assignments, only: [ :update ] do
     member do
       patch :release
+      post :ask
+      post :cancel
     end
   end
 
-  resources :fill_processes, only: [] do
+  resources :fill_processes, only: [ :destroy ] do
     member do
       post :start
+      post :stop
       post :emergency_step
       post :add_skill
       post :add_template
+      post :add_slots
     end
     resources :fill_candidates, only: [ :create, :destroy ] do
+      collection do
+        patch :reorder
+        delete :selected
+      end
       member do
         patch :move_higher
         patch :move_lower
@@ -71,16 +88,16 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :template_lists, only: [ :index, :create, :destroy ] do
+  resources :template_lists, only: [ :index, :create, :update, :destroy ] do
     resources :template_entries, only: [ :create, :destroy ] do
-      member do
-        patch :move_higher
-        patch :move_lower
+      collection do
+        patch :reorder
+        delete :selected
       end
     end
   end
 
-  resources :locations, only: [ :create, :destroy ]
-  resources :call_types, only: [ :create, :destroy ]
-  resources :position_labels, only: [ :create, :destroy ]
+  resources :locations, only: [ :create, :update, :destroy ]
+  resources :call_types, only: [ :create, :update, :destroy ]
+  resources :position_labels, only: [ :create, :update, :destroy ]
 end

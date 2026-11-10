@@ -1,7 +1,8 @@
 alex:
   venue: one
+  first_name: Alex
+  last_name: Rivera
   preferred_name: Alex
-  legal_name: Alex Rivera
   mobile: "555-0100"
   email: alex@example.com
   notes: Prefers days
@@ -10,6 +11,8 @@ alex:
 
 blair:
   venue: one
+  first_name: Blair
+  last_name: Cole
   preferred_name: Blair
   mobile: "555-0101"
   active: true
@@ -17,6 +20,8 @@ blair:
 
 casey:
   venue: one
+  first_name: Casey
+  last_name: Ng
   preferred_name: Casey
   mobile: "555-0102"
   active: false
@@ -24,6 +29,8 @@ casey:
 
 outsider:
   venue: other
+  first_name: Outsider
+  last_name: Guest
   preferred_name: Outsider
   mobile: "555-0199"
   active: true

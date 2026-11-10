@@ -1,3 +1,3 @@
 <% content_for :title, "New show" %>
-<h1>New show for <%= @client.name %></h1>
+<%= page_header "New show for #{@client.name}" %>
 <%= render "form", show: @show, client: @client %>

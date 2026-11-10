@@ -4,6 +4,7 @@ class CallAvailability
     declined: "Declined",
     time_conflict: "Time conflict",
     waiting_on_another_text: "Waiting on another text",
+    waiting_on_this_text: "Waiting for a reply",
     available: "Available"
   }.freeze
 
@@ -15,7 +16,8 @@ class CallAvailability
       .where(employee_id: ids, call_slots: { call_id: call.id })
       .order(created_at: :desc, id: :desc)
       .group_by(&:employee_id)
-    waiting_ids = Question.open.where(employee_id: ids).distinct.pluck(:employee_id).to_set
+    waiting_ids = Question.open.where(employee_id: ids).where("questions.call_id IS DISTINCT FROM ?", call.id).distinct.pluck(:employee_id).to_set
+    waiting_here_ids = Question.open.where(employee_id: ids, call_id: call.id).distinct.pluck(:employee_id).to_set
     declined_ids = Question.where(employee_id: ids, call_id: call.id, close_reason: "no").distinct.pluck(:employee_id).to_set
 
     employees.map do |employee|
@@ -25,17 +27,19 @@ class CallAvailability
         currents: currents.fetch(employee.id, []),
         on_call: on_call.fetch(employee.id, []),
         waiting: waiting_ids.include?(employee.id),
+        waiting_here: waiting_here_ids.include?(employee.id),
         fill_declined: declined_ids.include?(employee.id)
       )
     end
   end
 
-  def initialize(employee, call, currents: nil, on_call: nil, waiting: nil, fill_declined: nil)
+  def initialize(employee, call, currents: nil, on_call: nil, waiting: nil, waiting_here: nil, fill_declined: nil)
     @employee = employee
     @call = call
     @currents = currents
     @on_call = on_call
     @waiting = waiting
+    @waiting_here = waiting_here
     @fill_declined = fill_declined
   end
 
@@ -46,6 +50,7 @@ class CallAvailability
     return :declined if declined_this_call?
     return :time_conflict if time_conflict?
     return :waiting_on_another_text if waiting_on_another_text?
+    return :waiting_on_this_text if waiting_on_this_text?
 
     :available
   end
@@ -55,7 +60,7 @@ class CallAvailability
   end
 
   def option_label
-    name = employee.preferred_name
+    name = employee.name
     name = "#{name} (inactive)" unless employee.active?
     "#{name} - #{label}"
   end
@@ -88,7 +93,13 @@ class CallAvailability
   def waiting_on_another_text?
     return @waiting unless @waiting.nil?
 
-    Question.open.exists?(employee_id: employee.id)
+    Question.open.where(employee_id: employee.id).where("questions.call_id IS DISTINCT FROM ?", @call.id).exists?
+  end
+
+  def waiting_on_this_text?
+    return @waiting_here unless @waiting_here.nil?
+
+    Question.open.exists?(employee_id: employee.id, call_id: @call.id)
   end
 
   private

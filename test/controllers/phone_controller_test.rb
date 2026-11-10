@@ -14,6 +14,7 @@ class PhoneControllerTest < ActionDispatch::IntegrationTest
     get phone_path
 
     assert_response :success
+    assert_desk_live
     assert_select ".phone-roster a" do |links|
       assert_match "Alex", links[0].text
       assert_match "No open question", links[0].text

@@ -11,6 +11,10 @@ class Skill < ApplicationRecord
 
   scope :for_venue, ->(venue) { joins(:skill_category).where(skill_categories: { venue_id: venue.id }) }
 
+  def venue
+    skill_category&.venue
+  end
+
   def venue_id
     skill_category&.venue_id
   end

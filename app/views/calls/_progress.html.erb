@@ -1,0 +1,36 @@
+<% progress = @call.progress %>
+<section class="call-banner" aria-label="<%= "#{progress.slots} slots, #{progress.confirmed} confirmed, #{progress.awaiting} awaiting reply, #{progress.on_fill} assigned to auto-fills" %>">
+  <div class="call-banner-track" aria-hidden="true">
+    <span class="call-banner-fill" style="width: <%= progress.confirmed_percent %>%"></span>
+  </div>
+  <ul class="call-banner-stats">
+    <li>
+      <span class="call-banner-icon tone-slots"><%= icon(:lists, html_class: "size-5") %></span>
+      <span>
+        <strong class="call-banner-count"><%= progress.slots %></strong>
+        <span class="call-banner-label">Slots</span>
+      </span>
+    </li>
+    <li>
+      <span class="call-banner-icon tone-confirmed"><%= icon(:check, html_class: "size-5") %></span>
+      <span>
+        <strong class="call-banner-count"><%= progress.confirmed %></strong>
+        <span class="call-banner-label">Confirmed</span>
+      </span>
+    </li>
+    <li>
+      <span class="call-banner-icon tone-awaiting"><%= icon(:clock, html_class: "size-5") %></span>
+      <span>
+        <strong class="call-banner-count"><%= progress.awaiting %></strong>
+        <span class="call-banner-label">Awaiting Reply</span>
+      </span>
+    </li>
+    <li>
+      <span class="call-banner-icon tone-fill"><%= icon(:play, html_class: "size-5") %></span>
+      <span>
+        <strong class="call-banner-count"><%= progress.on_fill %></strong>
+        <span class="call-banner-label">Assigned to Auto-Fills</span>
+      </span>
+    </li>
+  </ul>
+</section>

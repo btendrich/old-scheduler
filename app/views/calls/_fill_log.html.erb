@@ -1,0 +1,6 @@
+<%= text_area_tag dom_id(process, :log), fill_log_lines(process),
+      id: dom_id(process, :log),
+      readonly: true,
+      class: "fill-log",
+      aria: { label: "Fill log" },
+      data: { controller: "fill-log" } %>

@@ -5,6 +5,12 @@ class CallTypesController < ApplicationController
     redirect_to setup_path, alert: call_type.errors.full_messages.to_sentence.presence
   end
 
+  def update
+    call_type = venue.call_types.find(params[:id])
+    call_type.update(name_param)
+    redirect_to setup_path, alert: call_type.errors.full_messages.to_sentence.presence
+  end
+
   def destroy
     call_type = venue.call_types.find(params[:id])
     call_type.destroy

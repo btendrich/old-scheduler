@@ -1,40 +1,47 @@
 <% content_for :title, "Employees" %>
-<h1>Employees</h1>
-<p><%= link_to "New employee", new_employee_path %></p>
+<%= page_header "Employees" do %>
+  <%= link_to "New employee", new_employee_path, class: "btn-primary" %>
+<% end %>
 
 <% if @employees.any? %>
-  <table>
-    <thead>
-      <tr>
-        <th>Order</th>
-        <th>Name</th>
-        <th>Mobile</th>
-        <th>Skills</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @employees.each do |employee| %>
-        <tr class="<%= "inactive" unless employee.active? %>">
-          <td>
-            <%= button_to "Up", move_higher_employee_path(employee), method: :patch %>
-            <%= button_to "Down", move_lower_employee_path(employee), method: :patch %>
-          </td>
-          <td>
-            <%= link_to employee.preferred_name, employee %>
-            <% if employee.legal_name.present? && employee.legal_name != employee.preferred_name %>
-              <span class="muted"><%= employee.legal_name %></span>
+  <div data-controller="people-pool" data-people-pool-lock-drag-value="true" data-people-pool-sortable-outlet="tbody">
+    <%= render "shared/list_controls", skills: @skills %>
+    <div class="overflow-hidden rounded-lg bg-white ring-1 ring-stone-200">
+      <table>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Name</th>
+            <th>Mobile</th>
+            <th>Skills</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-controller="sortable" data-sortable-url-value="<%= reorder_employees_path %>" data-sortable-group-value="roster" data-people-pool-target="list">
+          <% @employees.each do |employee| %>
+            <%= tag.tr class: ("inactive" unless employee.active?), data: { draggable: true, sortable_id: employee.id, people_pool_target: "person", name: employee.search_text, venue_order: employee.sort_order, levels: employee.employee_skills.to_h { |row| [ row.skill_id, row.level ] } } do %>
+              <td class="whitespace-nowrap">
+                <%= drag_handle %>
+                <%= button_to "Up", move_higher_employee_path(employee), method: :patch %>
+                <%= button_to "Down", move_lower_employee_path(employee), method: :patch %>
+              </td>
+              <td>
+                <%= link_to employee.name, employee, class: "font-medium text-stone-950 no-underline hover:text-sky-800" %>
+                <% if (given = employee_given_name(employee)) %>
+                  <span class="muted"><%= given %></span>
+                <% end %>
+              </td>
+              <td class="tabular-nums"><%= employee.mobile %></td>
+              <td>
+                <%= employee.skills_in_order.map { |row| "#{row.skill.name} #{row.level}" }.join(", ") %>
+              </td>
+              <td><%= "Inactive" unless employee.active? %></td>
             <% end %>
-          </td>
-          <td><%= employee.mobile %></td>
-          <td>
-            <%= employee.skills_in_order.map { |row| "#{row.skill.name} #{row.level}" }.join(", ") %>
-          </td>
-          <td><%= "Inactive" unless employee.active? %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
 <% else %>
-  <p>No employees yet.</p>
+  <p class="text-stone-500">No employees yet.</p>
 <% end %>

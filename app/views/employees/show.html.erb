@@ -1,70 +1,46 @@
-<% content_for :title, @employee.preferred_name %>
-<p><%= link_to "All employees", employees_path %></p>
-<h1 class="<%= "inactive" unless @employee.active? %>"><%= @employee.preferred_name %></h1>
-<% if @employee.legal_name.present? %>
-  <p class="muted"><%= @employee.legal_name %></p>
-<% end %>
-<p>
-  <%= @employee.mobile %>
-  <% if @employee.email.present? %>
-    · <%= @employee.email %>
-  <% end %>
-  <% unless @employee.active? %>
-    · Inactive
-  <% end %>
-</p>
-<% if @employee.notes.present? %>
-  <p><%= @employee.notes %></p>
-<% end %>
-<p>
-  <%= link_to "Edit", edit_employee_path(@employee) %>
+<% content_for :title, @employee.name %>
+<p class="text-sm"><%= link_to "All employees", employees_path, class: "no-underline hover:underline" %></p>
+<%= page_header @employee.name, lede: [ employee_given_name(@employee), @employee.mobile, @employee.email, ("Inactive" unless @employee.active?) ].compact_blank.join(" · ") do %>
+  <%= link_to "Edit", edit_employee_path(@employee), class: "btn-primary" %>
   <%= button_to "Delete", @employee, method: :delete %>
-</p>
+<% end %>
+<% if @employee.notes.present? %>
+  <p class="mb-6 max-w-2xl text-stone-700"><%= @employee.notes %></p>
+<% end %>
 
-<section>
-  <h2>Skills</h2>
+<section class="card">
+  <h2 class="mt-0">Skills</h2>
   <% if @employee.employee_skills.any? %>
-    <ul>
+    <ul class="rows">
       <% @employee.skills_in_order.each do |employee_skill| %>
         <li>
-          <%= employee_skill.skill.labeled_name %>
-          <%= form_with model: [ @employee, employee_skill ] do |form| %>
-            <%= form.select :level, (1..5).to_a %>
-            <%= form.text_field :note, placeholder: "Note" %>
-            <%= form.submit "Save" %>
+          <span class="font-medium"><%= employee_skill.skill.labeled_name %></span>
+          <span class="ml-auto flex items-center" aria-label="<%= level_name(employee_skill.level) %>">
+            <% (1..5).each do |level| %>
+              <span class="<%= level == employee_skill.level ? "text-emerald-600" : "text-stone-300" %>"><%= level_icon(level) %></span>
+            <% end %>
+          </span>
+          <% if employee_skill.note.present? %>
+            <span class="text-sm text-stone-500"><%= employee_skill.note %></span>
           <% end %>
-          <%= button_to "Remove", [ @employee, employee_skill ], method: :delete %>
         </li>
       <% end %>
     </ul>
   <% else %>
-    <p>No skills yet.</p>
-  <% end %>
-
-  <% if @skills.any? %>
-    <%= form_with model: [ @employee, @employee_skill ] do |form| %>
-      <%= form.collection_select :skill_id, @skills, :id, :labeled_name, include_blank: "Choose a skill" %>
-      <%= form.select :level, (1..5).to_a %>
-      <%= form.text_field :note, placeholder: "Note" %>
-      <%= form.submit "Add skill" %>
-    <% end %>
-  <% elsif venue.skill_categories.none? %>
-    <p>Add skills before assigning them. <%= link_to "Skills", skill_categories_path %></p>
-  <% else %>
-    <p class="muted">Every skill is already on this employee.</p>
+    <p class="text-stone-500">No skills yet.</p>
   <% end %>
 </section>
 
-<section>
-  <h2>Texts</h2>
+<section class="card mt-6">
+  <h2 class="mt-0">Texts</h2>
   <%= render "messages/thread", messages: @employee.messages.chronological %>
-  <%= form_with url: employee_messages_path(@employee) do %>
-    <%= label_tag :body, "Text #{@employee.preferred_name}" %>
+  <%= form_with url: employee_messages_path(@employee), class: "mt-4 flex flex-wrap items-end gap-2" do %>
+    <%= label_tag :body, "Text #{@employee.name}", class: "mt-0 w-full" %>
     <%= text_field_tag :body, nil, required: true %>
-    <%= submit_tag "Send" %>
+    <%= submit_tag "Send", class: "mt-0" %>
   <% end %>
-  <p class="muted">A one-off text does not ask a question.</p>
+  <p class="muted mt-2 text-sm">A one-off text does not ask a question.</p>
   <% unless Messaging.live? %>
-    <p><%= link_to "Open on the phone", phone_employee_path(@employee) %></p>
+    <p class="mt-2"><%= link_to "Open on the phone", phone_employee_path(@employee) %></p>
   <% end %>
 </section>

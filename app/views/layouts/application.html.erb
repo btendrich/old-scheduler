@@ -7,40 +7,84 @@
     <meta name="application-name" content="Scheduler">
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
+    <%= action_cable_meta_tag %>
     <%= csp_meta_tag %>
+    <% if Current.user %>
+      <% turbo_refreshes_with method: :morph, scroll: :preserve %>
+    <% end %>
 
     <%= yield :head %>
 
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
     <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
+  <%= tag.body data: {
+        controller: "desk-live",
+        desk_live_url_value: (Current.user ? live_path : rails_health_check_path),
+        desk_live_revision_value: venue&.live_revision,
+        desk_live_interval_value: 5000
+      } do %>
+    <%= turbo_stream_from venue if venue %>
+    <div class="desk-live-warning" hidden data-desk-live-target="warning" role="alertdialog" aria-modal="true" aria-labelledby="desk-live-title">
+      <div class="desk-live-card">
+        <%= icon(:alert, html_class: "mx-auto size-12 text-red-600") %>
+        <h2 id="desk-live-title">Lost connection to the server</h2>
+        <p>This page is not receiving updates. It will reload when the server is back.</p>
+        <button type="button" class="btn-primary" data-action="desk-live#reload">Reload the page</button>
+      </div>
+    </div>
+
     <% unless Messaging.live? %>
       <p class="messaging-banner">Texts are not being sent.</p>
     <% end %>
+
     <% if Current.user %>
-      <nav>
-        <%= link_to venue.name, root_path %>
-        <%= link_to "Employees", employees_path %>
-        <%= link_to "Skills", skill_categories_path %>
-        <%= link_to "Clients", clients_path %>
-        <%= link_to "Setup", setup_path %>
-        <%= link_to "Lists", template_lists_path %>
-        <%= link_to "Phone", phone_path unless Messaging.live? %>
-        <%= button_to "Sign out", session_path, method: :delete %>
-      </nav>
+      <div class="lg:grid lg:min-h-screen lg:grid-cols-[15rem_1fr]">
+        <aside class="flex flex-col bg-ink text-stone-300 lg:sticky lg:top-0 lg:h-screen">
+          <%= link_to root_path, class: "flex items-center gap-2 px-4 py-5 text-white no-underline hover:no-underline" do %>
+            <%= icon(:calls) %>
+            <span class="text-base font-semibold tracking-tight"><%= venue.name %></span>
+          <% end %>
+          <nav class="flex flex-1 flex-wrap gap-1 px-2 pb-2 lg:flex-col lg:flex-nowrap">
+            <%= nav_link "Calls", root_path, :calls %>
+            <%= nav_link "Employees", employees_path, :employees %>
+            <%= nav_link "Lists", template_lists_path, :lists %>
+            <%= nav_link "Skills", skill_categories_path, :skills, active: request.path.start_with?("/skill_categories", "/skills") %>
+            <%= nav_link "Clients", clients_path, :clients, active: request.path.match?(%r{\A/(clients|shows|calls)}) %>
+            <%= nav_link "Audit", audit_logs_path, :audit %>
+            <%= nav_link "Setup", setup_path, :setup %>
+            <%= nav_link "Phone", phone_path, :phone unless Messaging.live? %>
+          </nav>
+          <div class="px-2 py-3">
+            <%= button_to session_path, method: :delete, class: "nav-button", form_class: "w-full" do %>
+              <%= icon(:logout) %> Sign out
+            <% end %>
+          </div>
+        </aside>
+        <main class="w-full min-w-0 px-8 py-6">
+          <%= tag.div(flash[:alert], class: "alert mb-4 rounded-md bg-red-50 px-3 py-2") if flash[:alert] %>
+          <%= tag.div(flash[:notice], class: "notice mb-4 rounded-md bg-emerald-50 px-3 py-2") if flash[:notice] %>
+          <%= yield %>
+        </main>
+      </div>
+    <% else %>
+      <main class="flex min-h-screen items-center justify-center px-4 py-10">
+        <div class="w-full max-w-sm rounded-xl bg-white p-8 shadow-sm ring-1 ring-stone-200">
+          <p class="mb-6 text-sm font-semibold tracking-wide text-ink">Scheduler</p>
+          <%= tag.div(flash[:alert], class: "alert mb-4") if flash[:alert] %>
+          <%= tag.div(flash[:notice], class: "notice mb-4") if flash[:notice] %>
+          <%= yield %>
+        </div>
+      </main>
     <% end %>
-    <%= tag.div(flash[:alert], class: "alert") if flash[:alert] %>
-    <%= tag.div(flash[:notice], class: "notice") if flash[:notice] %>
-    <%= yield %>
-  </body>
+  <% end %>
 </html>

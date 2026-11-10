@@ -1,24 +1,25 @@
 <% content_for :title, "Phone" %>
-<h1>Phone</h1>
-<p><%= button_to "Fire the evening reminder", phone_reminder_path %></p>
+<%= page_header "Phone", lede: "What the crew sees while texts are simulated." do %>
+  <%= button_to "Fire the evening reminder", phone_reminder_path, class: "btn-primary border-0" %>
+<% end %>
 
 <div class="phone">
-  <aside class="phone-roster">
+  <aside class="phone-roster card p-2">
     <% @employees.each do |employee| %>
       <%= link_to phone_employee_path(employee), class: ("current" if employee.id == @employee&.id) do %>
-        <strong><%= employee.preferred_name %></strong>
+        <strong><%= employee.name %></strong>
         <span class="muted"><%= employee.question_label %></span>
       <% end %>
     <% end %>
   </aside>
 
-  <section>
+  <section class="card">
     <% if @employee %>
-      <h2><%= @employee.preferred_name %></h2>
-      <p class="muted"><%= @employee.mobile %></p>
+      <h2 class="mt-0"><%= @employee.name %></h2>
+      <p class="muted text-sm tabular-nums"><%= @employee.mobile %></p>
       <%= render "messages/thread", messages: @messages %>
-      <p class="phone-replies">
-        <%= button_to "YES", phone_replies_path(@employee), params: { body: "YES" } %>
+      <p class="phone-replies mt-4 flex flex-wrap gap-2">
+        <%= button_to "YES", phone_replies_path(@employee), params: { body: "YES" }, class: "btn-primary border-0" %>
         <%= button_to "NO", phone_replies_path(@employee), params: { body: "NO" } %>
         <% if @employee.open_question&.kind == "fill_offer" %>
           <%= button_to "Time out this offer", phone_timeout_path(@employee) %>
@@ -27,13 +28,13 @@
           <% end %>
         <% end %>
       </p>
-      <%= form_with url: phone_replies_path(@employee) do %>
-        <%= label_tag :body, "Reply" %>
+      <%= form_with url: phone_replies_path(@employee), class: "mt-4 flex flex-wrap items-end gap-2" do %>
+        <%= label_tag :body, "Reply", class: "mt-0 w-full" %>
         <%= text_field_tag :body, nil, required: true %>
-        <%= submit_tag "Send" %>
+        <%= submit_tag "Send", class: "mt-0" %>
       <% end %>
     <% else %>
-      <p>Add an employee before opening the phone.</p>
+      <p class="text-stone-500">Add an employee before opening the phone.</p>
     <% end %>
   </section>
 </div>

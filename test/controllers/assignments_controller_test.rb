@@ -27,11 +27,40 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Alex", response.body
     assert_match "Confirmed by desk", response.body
     assert_match "already called", response.body
-    assert_match "1 of 2 filled", response.body
+    assert_select ".call-banner", text: /1\s+Confirmed/
   end
 
-  test "an unconfirmed assignment stays on the slot" do
+  test "a confirmed person stays until cancel, which keeps the old row" do
+    assignment = call_slots(:deck_slot).assignments.create!(
+      employee: employees(:alex), source: "manual", confirmation: "confirmed_by_desk"
+    )
+
     post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
+    }
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_nil assignment.reload.released_at
+    assert_equal employees(:alex), call_slots(:deck_slot).reload.current_assignment.employee
+
+    post cancel_assignment_path(assignment)
+
+    assert assignment.reload.released_at
+    assert_match "You're off", employees(:alex).messages.last.body
+    assert_nil call_slots(:deck_slot).reload.current_assignment
+
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
+    }
+
+    assert_equal employees(:blair), call_slots(:deck_slot).reload.current_assignment.employee
+  end
+
+  test "choosing a name assigns them and waits for ask" do
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
       assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
     }
 
@@ -39,11 +68,110 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal employees(:blair), assignment.employee
     assert_equal "unconfirmed", assignment.confirmation
     assert_nil assignment.booking_text_sent_at
-    assert_equal "manual_confirmation", employees(:blair).open_question.kind
-    assert_match "Reply YES", employees(:blair).messages.last.body
+    assert_nil employees(:blair).open_question
+    assert_equal 0, employees(:blair).messages.count
 
     follow_redirect!
+    assert_select "td.slot-commit button[aria-label='Ask Cole, Blair']", text: "Ask"
+    assert_select "td.slot-commit .slot-cancel-button", count: 0
+    assert_select "button.assign-picker-locked", count: 0
+    assert_match "Open", response.body
+
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
+    }
+
+    assert_equal employees(:alex), call_slots(:deck_slot).reload.current_assignment.employee
+    assert_equal 0, employees(:blair).messages.count
+    assert_equal 0, employees(:alex).messages.count
+    assert_nil Assignment.find_by(id: assignment.id)
+    follow_redirect!
+    assert_select "ul.slot-history li", text: /Cole, Blair/, count: 0
+  end
+
+  test "ask sends the confirmation and locks the name" do
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
+    }
+    assignment = call_slots(:deck_slot).reload.current_assignment
+
+    post ask_assignment_path(assignment)
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_equal "manual_confirmation", employees(:blair).reload.open_question.kind
+    assert_match "Reply YES", employees(:blair).messages.last.body
+    follow_redirect!
     assert_match "Waiting for a reply", response.body
+    assert_select "button.assign-picker-locked[disabled]", text: "Cole, Blair"
+    assert_select "td.slot-commit button[aria-label='Cancel Cole, Blair'][data-message=?]", "Cancel Cole, Blair for this call? They'll be texted that they're off."
+    assert_select "button", text: "Cancel", count: 0
+    assert_select "td.slot-commit button", text: "Ask", count: 0
+
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
+    }
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_equal "Cancel the text before changing who is on this slot.", flash[:alert]
+    assert_equal employees(:blair), call_slots(:deck_slot).reload.current_assignment.employee
+  end
+
+  test "cancel texts them off and the name can be changed again" do
+    venues(:one).bosses.create!(mobile: "555-0900")
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
+    }
+    assignment = call_slots(:deck_slot).reload.current_assignment
+    post ask_assignment_path(assignment)
+
+    post cancel_assignment_path(assignment)
+
+    assert assignment.reload.released_at
+    assert_nil employees(:blair).reload.open_question
+    assert_match "You're off Saturday Night", employees(:blair).messages.last.body
+    assert_equal 0, BossNotice.count
+    assert_nil call_slots(:deck_slot).reload.current_assignment
+    follow_redirect!
+    assert_select "button.assign-picker-locked", count: 0
+    assert_select "input[aria-label='Search employees']"
+    assert_select "ul.slot-history li", text: /Cole, Blair · Cancelled/
+  end
+
+  test "a penciled name can be swapped or the slot removed, and a committed slot cannot" do
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
+    }
+
+    delete call_slot_path(call_slots(:deck_slot))
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_nil CallSlot.find_by(id: call_slots(:deck_slot).id)
+
+    post call_slot_assignments_path(call_slots(:foh_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:alex).id, confirmation: "confirmed_by_desk" }
+    }
+    delete call_slot_path(call_slots(:foh_slot))
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_equal "That slot can't be removed while someone has been asked, is confirmed, or it is on a fill.", flash[:alert]
+    assert CallSlot.find_by(id: call_slots(:foh_slot).id)
+  end
+
+  test "a slot on a fill cannot be removed" do
+    process = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+    process.slots.create!(call_slot: call_slots(:deck_slot))
+
+    delete call_slot_path(call_slots(:deck_slot))
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_equal "That slot can't be removed while someone has been asked, is confirmed, or it is on a fill.", flash[:alert]
+    assert CallSlot.find_by(id: call_slots(:deck_slot).id)
   end
 
   test "the picker shows one status and blocks a second slot on this call" do
@@ -67,8 +195,8 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Time conflict", response.body
     assert_match "Declined", response.body
     assert_match "Available", response.body
-    assert_select "option", text: "Blair - Time conflict"
-    assert_select "option", text: "Casey (inactive) - Declined"
+    assert_select "option", text: "Cole, Blair - Time conflict"
+    assert_select "option", text: "Ng, Casey (inactive) - Declined"
 
     post call_slot_assignments_path(call_slots(:deck_slot)), params: {
       assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
@@ -76,7 +204,7 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
     get new_call_slot_assignment_path(call_slots(:foh_slot))
 
     assert_match "On this call", response.body
-    assert_select "option", text: "Alex - On this call", count: 0
+    assert_select "option", text: "Rivera, Alex - On this call", count: 0
 
     post call_slot_assignments_path(call_slots(:foh_slot)), params: {
       assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
@@ -84,6 +212,29 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_match "already on this call", response.body
+  end
+
+  test "a slot on a fill shows its person and cannot be reassigned" do
+    process = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+    process.slots.create!(call_slot: call_slots(:deck_slot))
+    call_slots(:deck_slot).assignments.create!(
+      employee: employees(:alex), source: "automatic", confirmation: "unconfirmed", fill_process: process
+    )
+
+    get call_path(calls(:load_in))
+
+    assert_select "button.assign-picker-locked[disabled]", text: "Rivera, Alex"
+    assert_select "input[aria-label='Search employees']"
+
+    post call_slot_assignments_path(call_slots(:deck_slot)), params: {
+      replace: "1",
+      assignment: { employee_id: employees(:blair).id, confirmation: "unconfirmed" }
+    }
+
+    assert_redirected_to call_path(calls(:load_in))
+    assert_equal employees(:alex), call_slots(:deck_slot).reload.current_assignment.employee
+    follow_redirect!
+    assert_match "That slot is on a fill.", response.body
   end
 
   test "a filled slot cannot be assigned again" do
@@ -109,7 +260,7 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
     assert_nil call_slots(:deck_slot).reload.current_assignment
     follow_redirect!
     assert_match "Assign", response.body
-    assert_match(/Released:\s+Alex \(Confirmed by desk\)/, response.body)
+    assert_select "ul.slot-history li", text: /Rivera, Alex · Confirmed by desk/
   end
 
   test "marking a booking declined shows a warning and still holds the slot" do
@@ -165,6 +316,7 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
       assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
     }
     assignment = call_slots(:deck_slot).reload.current_assignment
+    post ask_assignment_path(assignment)
 
     post phone_replies_path(employees(:alex)), params: { body: "YES running late" }
 
@@ -182,6 +334,7 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
       assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
     }
     assignment = call_slots(:deck_slot).reload.current_assignment
+    post ask_assignment_path(assignment)
 
     patch assignment_path(assignment), params: { assignment: { confirmation: "confirmed_by_desk" } }
 
@@ -199,6 +352,7 @@ class AssignmentsControllerTest < ActionDispatch::IntegrationTest
       assignment: { employee_id: employees(:alex).id, confirmation: "unconfirmed" }
     }
     assignment = call_slots(:deck_slot).reload.current_assignment
+    post ask_assignment_path(assignment)
 
     patch release_assignment_path(assignment)
 

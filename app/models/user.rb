@@ -1,4 +1,5 @@
 class User < ApplicationRecord
+  skip_venue_desk!
   has_secure_password
   belongs_to :venue
   has_many :sessions, dependent: :destroy

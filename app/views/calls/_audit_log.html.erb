@@ -1,0 +1,7 @@
+<% zone = ActiveSupport::TimeZone[call.venue.time_zone] %>
+<%= text_area_tag dom_id(call, :audit_log), audit_log_lines(call.outcome_logs, zone: zone),
+      id: dom_id(call, :audit_log),
+      readonly: true,
+      class: "call-audit-log",
+      aria: { label: "Call audit log" },
+      data: { controller: "fill-log" } %>

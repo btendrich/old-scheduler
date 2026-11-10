@@ -3,11 +3,15 @@ class EmployeesController < ApplicationController
 
   def index
     @employees = venue.employees.ordered.includes(employee_skills: { skill: :skill_category })
+    @skills = Skill.for_venue(venue).includes(:skill_category).order("skill_categories.sort_order, skills.sort_order")
+  end
+
+  def reorder
+    saved = ListOrder.apply(venue.employees.ordered, params[:ids], :sort_order)
+    head saved ? :no_content : :unprocessable_entity
   end
 
   def show
-    @employee_skill = @employee.employee_skills.new(level: 3)
-    @skills = available_skills
   end
 
   def new
@@ -24,12 +28,14 @@ class EmployeesController < ApplicationController
   end
 
   def edit
+    @categories = skill_tree
   end
 
   def update
     if @employee.update(employee_params)
       redirect_to @employee
     else
+      @categories = skill_tree
       render :edit, status: :unprocessable_entity
     end
   end
@@ -58,11 +64,10 @@ class EmployeesController < ApplicationController
     end
 
     def employee_params
-      params.require(:employee).permit(:preferred_name, :legal_name, :mobile, :email, :notes, :active)
+      params.require(:employee).permit(:first_name, :last_name, :preferred_name, :mobile, :email, :notes, :active)
     end
 
-    def available_skills
-      taken = @employee.skill_ids
-      venue.skill_categories.ordered.includes(:skills).flat_map(&:skills).reject { |skill| taken.include?(skill.id) }
+    def skill_tree
+      venue.skill_categories.ordered.includes(:skills)
     end
 end

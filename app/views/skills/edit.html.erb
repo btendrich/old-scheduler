@@ -1,5 +1,5 @@
 <% content_for :title, "Edit #{@skill.name}" %>
-<h1>Edit skill</h1>
+<%= page_header "Edit skill" %>
 <%= form_with model: @skill do |form| %>
   <%= render "shared/errors", record: @skill %>
   <%= form.label :name %>

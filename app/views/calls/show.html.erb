@@ -1,83 +1,23 @@
 <% content_for :title, @call.show.name %>
-<p><%= link_to @call.show.name, @call.show %></p>
-<h1><%= venue_time(@call.starts_at) %> – <%= venue_time(@call.ends_at) %></h1>
-<p><%= @call.location.name %> · <%= @call.call_type.name %></p>
-<p>
-  <%= link_to "Edit", edit_call_path(@call) %>
-  <%= button_to "Delete", @call, method: :delete %>
-</p>
-
-<section>
-  <h2>Slots</h2>
-  <% if @call.call_slots.any? %>
-    <% filled = @call.call_slots.count { |slot| slot.current_assignment } %>
-    <p><%= filled %> of <%= @call.call_slots.size %> filled</p>
-    <ol>
-      <% @call.call_slots.each do |slot| %>
-        <li>
-          <p>
-            <strong><%= slot.position_label.name %></strong>
-            <%= button_to "Remove", call_slot_path(slot), method: :delete %>
-          </p>
-          <% if (assignment = slot.current_assignment) %>
-            <p>
-              <%= assignment.employee.preferred_name %>
-              · <%= assignment.confirmation_label %>
-              · <%= assignment.source_label %>
-              <% if assignment.confirmation == "declined" %>
-                <span class="warning">Cannot make it</span>
-              <% end %>
-              <% if assignment.needs_review? %>
-                <span class="warning">Needs review</span>
-              <% end %>
-            </p>
-            <% if assignment.open_question %>
-              <p>Waiting for a reply</p>
-            <% end %>
-            <% if (reminder = assignment.reminder_question) %>
-              <p><%= reminder.reminder_status %></p>
-            <% end %>
-            <% if assignment.boss_notices.any? %>
-              <p class="muted"><%= assignment.boss_notices.first.body %></p>
-            <% end %>
-            <% if assignment.note.present? %>
-              <p><%= assignment.note %></p>
-            <% end %>
-            <%= form_with model: assignment do |form| %>
-              <%= form.label :confirmation, "Confirmation" %>
-              <%= form.select :confirmation, Assignment.confirmation_choices %>
-              <%= form.label :note, "Note" %>
-              <%= form.text_field :note %>
-              <%= form.submit "Update" %>
-            <% end %>
-            <%= button_to "Release", release_assignment_path(assignment), method: :patch %>
-          <% else %>
-            <p><%= link_to "Assign", new_call_slot_assignment_path(slot) %></p>
-          <% end %>
-          <% released = slot.assignments.select(&:released_at).sort_by { |record| [ record.released_at, record.id ] }.reverse %>
-          <% if released.any? %>
-            <p class="muted">
-              Released:
-              <%= released.map { |record| "#{record.employee.preferred_name} (#{record.confirmation_label})" }.join(", ") %>
-            </p>
-          <% end %>
-        </li>
-      <% end %>
-    </ol>
-  <% else %>
-    <p>No slots yet. Headcount is the number of slots.</p>
+<div class="call-page">
+  <p class="text-sm"><%= link_to @call.show.name, @call.show, class: "no-underline hover:underline" %></p>
+  <%= page_header @call.show.name, lede: "#{@call.location.name} · #{@call.call_type.name}" do %>
+    <%= link_to "Edit", edit_call_path(@call), class: "btn-primary" %>
+    <%= button_to "Delete", @call, method: :delete %>
   <% end %>
 
-  <% if venue.position_labels.any? %>
-    <%= form_with url: call_call_slots_path(@call), scope: :call_slot do |form| %>
-      <%= form.collection_select :position_label_id, venue.position_labels.order(:name), :id, :name %>
-      <%= label_tag :count, "How many" %>
-      <%= number_field_tag :count, 1, min: 1, max: 20 %>
-      <%= form.submit "Add slots" %>
-    <% end %>
-  <% else %>
-    <p>Add a position label in <%= link_to "Setup", setup_path %> before adding slots.</p>
-  <% end %>
-</section>
+  <%= render "progress" %>
+  <%= render "summary" %>
 
-<%= render "calls/fill" %>
+  <div class="call-desk" data-controller="call-desk" data-call-desk-call-id-value="<%= @call.id %>">
+    <%= render "slots" %>
+    <%= render "fill" %>
+  </div>
+
+  <section class="call-audit">
+    <h2>Audit</h2>
+    <div class="call-audit-frame">
+      <%= render "audit_log", call: @call %>
+    </div>
+  </section>
+</div>

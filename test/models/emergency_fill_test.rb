@@ -155,7 +155,7 @@ class EmergencyFillTest < ActiveSupport::TestCase
     end
 
     def hire(name, mobile)
-      venues(:one).employees.create!(preferred_name: name, mobile: mobile, active: true)
+      venues(:one).employees.create!(first_name: name, last_name: "Crew", mobile: mobile, active: true)
     end
 
     def candidate(process, employee)

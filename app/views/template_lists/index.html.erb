@@ -1,31 +1,33 @@
 <% content_for :title, "Lists" %>
-<h1>Lists</h1>
-<p class="muted">A list is a named order of people. Adding it to a fill keeps that order and skips anyone already on the fill.</p>
+<%= page_header "Lists", lede: "The venue's lists. One of them is the default a call opens on." %>
 
-<%= form_with model: @list do |form| %>
-  <%= form.label :name, "New list" %>
-  <%= form.text_field :name %>
-  <%= form.submit "Add list" %>
-<% end %>
-
-<% @lists.each do |list| %>
-  <section>
-    <h2><%= list.name %></h2>
-    <%= button_to "Delete list", list, method: :delete %>
-    <ol>
-      <% list.entries.each do |entry| %>
-        <li>
-          <%= entry.employee.preferred_name %>
-          <%= button_to "Up", move_higher_template_list_template_entry_path(list, entry), method: :patch %>
-          <%= button_to "Down", move_lower_template_list_template_entry_path(list, entry), method: :patch %>
-          <%= button_to "Remove", template_list_template_entry_path(list, entry), method: :delete %>
-        </li>
+<section class="card mb-6">
+  <ul class="m-0 list-none p-0">
+    <li>
+      <p class="font-semibold"><%= venue.name %></p>
+      <% if @lists.any? %>
+        <ul class="skill-branches">
+          <% @lists.each do |list| %>
+            <li>
+              <%= link_to template_lists_path(list: list.id), class: "list-tree-link", aria: { current: ("page" if @selected == list) } do %>
+                <span class="truncate"><%= list.name %></span>
+                <% if list.default? %><span class="list-default">Default</span><% end %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="muted mt-2">No lists yet.</p>
       <% end %>
-    </ol>
-    <%= form_with url: template_list_template_entries_path(list) do %>
-      <%= label_tag "employee_id_#{list.id}", "Add a person" %>
-      <%= select_tag "employee_id", options_from_collection_for_select(venue.employees.ordered, :id, :preferred_name), include_blank: "Choose a person", id: "employee_id_#{list.id}" %>
-      <%= submit_tag "Add" %>
-    <% end %>
-  </section>
+    </li>
+  </ul>
+  <%= form_with model: @draft, class: "mt-4 flex flex-wrap items-end gap-2" do |form| %>
+    <%= form.label :name, "New list", class: "mt-0 w-full" %>
+    <%= form.text_field :name, required: true %>
+    <%= form.submit "Add list", class: "mt-0" %>
+  <% end %>
+</section>
+
+<% if @selected %>
+  <%= render "editor", list: @selected, available: @available, members: @members, categories: @categories, roster: @roster, work: @work %>
 <% end %>

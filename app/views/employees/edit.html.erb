@@ -1,3 +1,4 @@
-<% content_for :title, "Edit #{@employee.preferred_name}" %>
-<h1>Edit <%= @employee.preferred_name %></h1>
+<% content_for :title, "Edit #{@employee.name}" %>
+<%= page_header "Edit #{@employee.name}", lede: "The center mark is normal. Marks to the left are below it, and marks to the right are above it." %>
 <%= render "form", employee: @employee %>
+<%= render "skill_tree", employee: @employee, categories: @categories %>

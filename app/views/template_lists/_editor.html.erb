@@ -1,0 +1,82 @@
+<section class="card"
+  data-controller="list-board list-search"
+  data-list-board-add-url-value="<%= template_list_template_entries_path(list) %>"
+  data-list-board-remove-url-value="<%= selected_template_list_template_entries_path(list) %>"
+  data-list-board-sortable-outlet="[data-list-members]"
+  data-action="sortable:move->list-board#gather list-search:filtered->list-board#refresh">
+  <div class="list-editor">
+      <div class="list-search-bar">
+        <div class="list-search-field">
+          <div data-list-search-target="chips" class="contents"></div>
+          <input type="search" class="list-search-input" placeholder="Search names and notes" aria-label="Search" data-list-search-target="query" data-action="input->list-search#filter">
+          <button type="button" class="list-search-clear" data-action="list-search#clear" aria-label="Clear search"><%= remove_icon %></button>
+        </div>
+        <div class="relative shrink-0">
+          <button type="button" data-action="list-search#toggleMenu">Skill</button>
+          <div class="list-skill-menu" hidden data-list-search-target="menu">
+            <%= render "skill_menu", categories: categories %>
+          </div>
+        </div>
+      </div>
+      <div class="list-pane list-pane-available">
+        <div class="list-pane-head list-person-cols">
+          <% [["Order", "venue", "Venue order", true], ["Name", "name", "Name", false], ["Skills", "skills", "Skills", false]].each do |label, column, accessible, active| %>
+            <button type="button" class="list-sort <%= "is-asc" if active %>" aria-label="<%= accessible %>" aria-sort="<%= active ? "ascending" : "none" %>" data-list-search-target="sortButton" data-action="list-search#sort" data-list-search-column-param="<%= column %>">
+              <span><%= label %></span>
+              <span class="sort-both shrink-0" aria-hidden="true"><%= icon(:sort) %></span>
+              <span class="sort-asc shrink-0" aria-hidden="true"><%= icon(:sort_up) %></span>
+              <span class="sort-desc shrink-0" aria-hidden="true"><%= icon(:sort_down) %></span>
+            </button>
+          <% end %>
+        </div>
+        <ul class="m-0 list-none p-0" data-list-board-target="availableList" data-list-search-target="list">
+          <% available.each do |employee| %>
+            <% brief = employee.highest_skills %>
+            <%= tag.li class: [ "list-person", ("inactive" unless employee.active?) ], data: { controller: "employee-card", action: "click->list-board#choose", list_search_target: "person", employee_id: employee.id, name: employee.search_text, notes: employee.notes, skills: brief[:names], skill_level: employee.employee_skills.map(&:level).max || 0, levels: employee.employee_skills.to_h { |row| [ row.skill_id, row.level ] }.to_json, venue_order: employee.sort_order } do %>
+              <span class="list-order tabular-nums"><%= employee.sort_order %></span>
+              <span class="truncate font-medium"><%= employee.name %></span>
+              <span class="flex min-w-0 items-center gap-1 text-sm text-stone-500">
+                <span class="truncate"><%= brief[:names] %></span>
+                <% if brief[:more].positive? %><span class="shrink-0">and <%= brief[:more] %> more</span><% end %>
+              </span>
+              <%= employee_card_template(employee, record: work[employee.id]) %>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+
+    <div class="list-title">
+      <h2 class="mt-0 truncate"><%= list.name %></h2>
+      <p class="flex shrink-0 items-center gap-2">
+        <% if list.default? %>
+          <span class="list-default">Default list</span>
+        <% else %>
+          <%= button_to "Make default", template_list_path(list), method: :patch, params: { template_list: { default: true } } %>
+        <% end %>
+        <%= button_to "Delete list", list, method: :delete %>
+      </p>
+    </div>
+
+    <div class="list-moves">
+      <button type="button" data-list-board-target="addButton" data-action="list-board#add" aria-label="Add to list" disabled>&gt;&gt;</button>
+      <button type="button" data-list-board-target="removeButton" data-action="list-board#remove" aria-label="Remove from list" disabled>&lt;&lt;</button>
+    </div>
+
+    <div class="list-pane list-pane-members">
+      <div class="list-pane-head"><span>Name</span></div>
+      <ol class="candidate-list m-0 min-h-48 list-none p-0" data-list-members data-list-board-target="memberList" data-controller="sortable" data-sortable-url-value="<%= reorder_template_list_template_entries_path(list) %>" data-sortable-group-value="list" data-sortable-put-value="false">
+        <% members.each do |entry| %>
+          <% employee = roster.fetch(entry.employee_id) %>
+          <%= tag.li class: "list-member", data: { controller: "employee-card", draggable: true, sortable_id: entry.id, action: "click->list-board#choose" } do %>
+            <%= drag_handle %>
+            <span class="min-w-0 flex-1 truncate font-medium"><%= employee.name %></span>
+            <%= button_to template_list_template_entry_path(list, entry), method: :delete, class: "list-remove", form: { class: "list-remove-form" }, aria: { label: "Remove #{employee.name}" } do %>
+              <%= remove_icon %>
+            <% end %>
+            <%= employee_card_template(employee, record: work[employee.id]) %>
+          <% end %>
+        <% end %>
+      </ol>
+    </div>
+  </div>
+</section>

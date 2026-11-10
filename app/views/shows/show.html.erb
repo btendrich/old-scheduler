@@ -1,25 +1,26 @@
 <% content_for :title, @show.name %>
-<p><%= link_to @show.client.name, @show.client %></p>
-<h1><%= @show.name %></h1>
-<p>
-  <%= link_to "Edit", edit_show_path(@show) %>
+<p class="text-sm"><%= link_to @show.client.name, @show.client, class: "no-underline hover:underline" %></p>
+<%= page_header @show.name do %>
+  <%= link_to "Edit", edit_show_path(@show), class: "btn-primary" %>
   <%= button_to "Delete", @show, method: :delete %>
-</p>
+<% end %>
 
 <section>
-  <h2>Calls</h2>
-  <p><%= link_to "New call", new_show_call_path(@show) %></p>
+  <div class="mb-3 flex items-end justify-between gap-3">
+    <h2 class="mt-0">Calls</h2>
+    <%= link_to "New call", new_show_call_path(@show), class: "btn-primary" %>
+  </div>
   <% if @calls.any? %>
-    <ul>
+    <ul class="rows mt-0">
       <% @calls.each do |call| %>
         <li>
-          <%= link_to "#{venue_time(call.starts_at)} – #{venue_time(call.ends_at)}", call %>
-          <%= call.location.name %> · <%= call.call_type.name %>
-          <span class="muted"><%= pluralize(call.call_slots.size, "slot") %></span>
+          <%= link_to "#{venue_time(call.starts_at)} – #{venue_time(call.ends_at)}", call, class: "font-medium text-stone-950 no-underline tabular-nums hover:text-sky-800" %>
+          <span class="text-sm text-stone-600"><%= call.location.name %> · <%= call.call_type.name %></span>
+          <span class="muted text-sm"><%= pluralize(call.call_slots.size, "slot") %></span>
         </li>
       <% end %>
     </ul>
   <% else %>
-    <p>No calls yet.</p>
+    <p class="text-stone-500">No calls yet.</p>
   <% end %>
 </section>

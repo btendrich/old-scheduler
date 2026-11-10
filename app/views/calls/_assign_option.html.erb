@@ -1,0 +1,8 @@
+<% unavailable = availability&.status != :available %>
+<% blocked = availability && !availability.placeable? %>
+<%= tag.li data: { assign_picker_target: "option", name: employee.search_text } do %>
+  <%= tag.button type: "button", class: [ "assign-option", ("is-unavailable" if unavailable) ], disabled: blocked, data: { action: ("assign-picker#choose" unless blocked), assign_picker_id_param: employee.id } do %>
+    <%= tag.span employee_option_name(employee), class: "assign-option-name" %>
+    <%= status_badge(availability.label) if unavailable && availability %>
+  <% end %>
+<% end %>

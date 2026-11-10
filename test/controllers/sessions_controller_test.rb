@@ -6,6 +6,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   test "new" do
     get new_session_path
     assert_response :success
+    assert_desk_live signed_in: false
   end
 
   test "create with valid credentials" do

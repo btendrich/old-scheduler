@@ -5,6 +5,12 @@ class LocationsController < ApplicationController
     redirect_to setup_path, alert: location.errors.full_messages.to_sentence.presence
   end
 
+  def update
+    location = venue.locations.find(params[:id])
+    location.update(name_param)
+    redirect_to setup_path, alert: location.errors.full_messages.to_sentence.presence
+  end
+
   def destroy
     location = venue.locations.find(params[:id])
     location.destroy

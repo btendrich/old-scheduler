@@ -46,6 +46,29 @@ class FillProcessTest < ActiveSupport::TestCase
     assert_match "Reply YES or NO", employees(:blair).messages.last.body
   end
 
+  test "an offer schedules its timeout for when the minutes run out" do
+    process = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+    process.slots.create!(call_slot: call_slots(:deck_slot))
+    process.add_employee(employees(:alex))
+
+    freeze_time do
+      process.start!
+      job = enqueued_jobs.find { |entry| entry[:job] == OfferTimeoutJob }
+      assert job
+      at = job[:at].respond_to?(:to_f) ? job[:at].to_f : job[:at]
+      assert_in_delta 30.minutes.from_now.to_f, at, 1
+    end
+  end
+
+  test "an open offer is scheduled again after a restart" do
+    start_fill(slots: [ call_slots(:deck_slot) ], people: [ employees(:alex) ])
+    clear_enqueued_jobs
+
+    Question.reschedule_open_timeouts
+
+    assert_enqueued_jobs 1, only: OfferTimeoutJob
+  end
+
   test "a timeout asks the next person" do
     process = start_fill(slots: [ call_slots(:deck_slot) ], people: [ employees(:alex), employees(:blair) ])
     question = Question.open.find_by!(employee: employees(:alex))
@@ -138,6 +161,21 @@ class FillProcessTest < ActiveSupport::TestCase
     assert_equal 1, employees(:alex).messages.where("body LIKE ?", "%Reply YES or NO%").count
   end
 
+  test "another check for names repeats the log line instead of adding one" do
+    process = start_fill(slots: [ call_slots(:deck_slot), call_slots(:foh_slot) ], people: [])
+    event = process.events.find_by!(detail: "Waiting for another name")
+
+    assert_equal 1, enqueued_jobs.count { |job| job[:job] == ResumeFillJob }
+    assert_equal 1, event.times
+
+    process.advance
+
+    assert_equal 1, enqueued_jobs.count { |job| job[:job] == ResumeFillJob }
+    assert_equal 1, process.events.where(detail: "Waiting for another name").count
+    assert_equal 2, event.reload.times
+    assert_match "Waiting for another name · last message repeated 1 time", ApplicationController.helpers.fill_log_lines(process)
+  end
+
   test "the list ending short waits for more names, and a new name is asked" do
     process = start_fill(slots: [ call_slots(:deck_slot) ], people: [])
 
@@ -211,14 +249,101 @@ class FillProcessTest < ActiveSupport::TestCase
     )
 
     travel_to Time.find_zone("America/New_York").parse("2026-10-17 22:00") do
-      assert_enqueued_with(job: DeliverWhenOpenJob) { assignment.ask_or_confirm }
+      assert_enqueued_with(job: AskQueuedQuestionJob) { assignment.ask_or_confirm }
       assert_nil employees(:alex).open_question
+      assert employees(:alex).questions.queued.exists?(kind: "manual_confirmation")
     end
 
     travel_to Time.find_zone("America/New_York").parse("2026-10-18 10:00") do
-      perform_enqueued_jobs(only: DeliverWhenOpenJob)
+      perform_enqueued_jobs(only: AskQueuedQuestionJob)
       assert_equal "manual_confirmation", employees(:alex).reload.open_question.kind
     end
+  end
+
+  test "the fill log notes create, start, and pause" do
+    process = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+    process.slots.create!(call_slot: call_slots(:deck_slot))
+    process.add_employee(employees(:alex))
+
+    assert_equal [ "created" ], process.events.order(:id).map(&:kind)
+
+    process.start!
+    process.stop!
+
+    kinds = process.events.order(:id).map(&:kind)
+    assert_equal "created", kinds.first
+    assert_includes kinds, "started"
+    assert_equal "paused", kinds.last
+    lines = ApplicationController.helpers.fill_log_lines(process)
+    assert_match "Created", lines
+    assert_match "Started", lines
+    assert_match "Paused", lines
+
+    call_log = calls(:load_in).outcome_logs
+    assert_equal %w[started paused], call_log.map(&:kind)
+    assert_equal [ "Fill #{process.number}" ], call_log.map(&:detail).uniq
+    assert_not_includes call_log.map(&:kind), "created"
+  end
+
+  test "stopping a fill holds the next text until it is started again" do
+    process = start_fill(slots: [ call_slots(:deck_slot) ], people: [ employees(:alex), employees(:blair) ])
+
+    process.stop!
+
+    assert_equal "pending", process.reload.status
+    assert_nil process.next_step_at
+
+    Messaging::Receive.new.call(employee: employees(:alex), body: "NO")
+
+    assert_equal "pending", candidate(process, employees(:blair)).state
+    assert_equal 0, employees(:blair).messages.count
+
+    process.start!
+
+    assert_equal "asked", candidate(process, employees(:blair)).reload.state
+  end
+
+  test "each slot shows who is up and how long the offer has left" do
+    process = start_fill(
+      slots: [ call_slots(:deck_slot), call_slots(:foh_slot) ],
+      people: [ employees(:alex), employees(:blair) ]
+    )
+    travel 10.minutes
+
+    rows = process.slot_statuses
+    assert_equal [ "Deck", "FOH" ], rows.map(&:label)
+    assert_equal [ "Rivera, Alex" ], rows.first.people.map(&:name)
+    assert_equal "Waiting for a reply", rows.first.status
+    assert_equal "20 mins", rows.first.people.first.remaining
+    assert_equal [ "Cole, Blair" ], rows.second.people.map(&:name)
+
+    Messaging::Receive.new.call(employee: employees(:alex), body: "YES")
+
+    booked = process.reload.slot_statuses.find { |row| row.label == "Deck" }
+    assert_equal "Confirmed by reply", booked.status
+    assert_nil booked.people.first.remaining
+  end
+
+  test "each fill on a call gets the next number and a slot tally" do
+    first = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+    first.slots.create!(call_slot: call_slots(:deck_slot))
+    first.slots.create!(call_slot: call_slots(:foh_slot))
+    second = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+
+    assert_equal 1, first.number
+    assert_equal 2, second.number
+    assert_equal "1 x Deck, 1 x FOH", first.slot_tally
+    assert_equal "new", first.phase
+    assert_equal "Not started", first.synopsis
+
+    first.update!(status: "filling", started_at: Time.current)
+    assert_equal "running", first.reload.phase
+    first.stop!
+    assert_equal "paused", first.reload.phase
+
+    first.destroy!
+    third = calls(:load_in).fill_processes.create!(offer_timeout_minutes: 30)
+    assert_equal 3, third.number
   end
 
   test "two fills cannot own one slot" do

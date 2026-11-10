@@ -3,6 +3,17 @@ require "test_helper"
 class ClientsControllerTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:one) }
 
+  test "the clients pages stay on the desk live stream" do
+    get clients_path
+    assert_desk_live
+
+    get client_path(clients(:acme))
+    assert_desk_live
+
+    get show_path(shows(:saturday))
+    assert_desk_live
+  end
+
   test "a client gets a show" do
     post clients_path, params: { client: { name: "Northlight" } }
     client = venues(:one).clients.find_by!(name: "Northlight")

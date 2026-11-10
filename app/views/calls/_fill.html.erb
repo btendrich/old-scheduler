@@ -1,17 +1,42 @@
-<section>
-  <h2>Fill</h2>
-  <% owned = @call.call_slots.select { |slot| slot.current_assignment.nil? && slot.fill_slot.nil? } %>
-  <% if owned.any? %>
-    <%= form_with model: [ @call, FillProcess.new(offer_timeout_minutes: 60, step_size: 5, step_minutes: 10) ] do |form| %>
-      <fieldset>
-        <legend>Slots this fill owns</legend>
-        <% owned.each do |slot| %>
-          <label>
-            <%= check_box_tag "call_slot_ids[]", slot.id %>
-            <%= slot.position_label.name %>
-          </label>
+<section class="fill-column">
+  <div data-call-desk-target="panel" data-panel="summary">
+    <h2 class="mt-0">Fills</h2>
+    <% if @fill_processes.any? %>
+      <ul class="rows">
+        <% @fill_processes.each do |process| %>
+          <li class="fill-card flex-col items-stretch" data-call-desk-target="processCard" data-process-id="<%= process.id %>">
+            <div class="flex min-w-0 flex-wrap items-center gap-2">
+              <button type="button" class="flex min-w-0 flex-1 flex-col items-start border-0 bg-transparent p-0 text-left shadow-none" data-action="call-desk#pick" data-call-desk-kind-param="fill:<%= process.id %>">
+                <span class="font-medium"><%= process.number %> · <%= process.slot_tally %></span>
+                <span class="mt-1 flex flex-wrap items-center gap-2">
+                  <%= fill_phase_badge(process) %>
+                  <span class="text-sm text-stone-500"><%= process.synopsis %><%= " · first response" if process.emergency? %></span>
+                </span>
+              </button>
+              <%= form_with url: add_slots_fill_process_path(process), class: "m-0 shrink-0", data: { call_desk_target: "addSlots" }, html: { hidden: true } do %>
+                <div data-call-desk-target="slotFields"></div>
+                <%= submit_tag "Add to this fill", class: "mt-0" %>
+              <% end %>
+              <% if process.running? %>
+                <%= button_to "Stop", stop_fill_process_path(process), form: { class: "m-0", data: { turbo_confirm: process.stop_warning }.compact } %>
+              <% elsif process.status == "pending" %>
+                <%= button_to "Start", start_fill_process_path(process), class: "btn-primary border-0", form: { class: "m-0" } %>
+              <% end %>
+            </div>
+            <%= render "process", process: process %>
+          </li>
         <% end %>
-      </fieldset>
+      </ul>
+    <% else %>
+      <p class="text-stone-500">No fill is running for this call.</p>
+    <% end %>
+  </div>
+
+  <div data-call-desk-target="panel" data-panel="create" hidden>
+    <h2 class="mt-0">New fill</h2>
+    <p class="text-sm text-stone-600">Slots: <span data-call-desk-target="createSummary"></span></p>
+    <%= form_with model: [ @call, FillProcess.new(offer_timeout_minutes: 60, step_size: 5, step_minutes: 10) ] do |form| %>
+      <div data-call-desk-target="slotFields"></div>
       <%= form.label :offer_timeout_minutes, "Minutes before an offer times out" %>
       <%= form.number_field :offer_timeout_minutes, min: 1 %>
       <%= form.label :mode, "First-response fill" %>
@@ -26,84 +51,15 @@
       <%= form.time_field :window_start %>
       <%= form.label :window_end, "Window ends" %>
       <%= form.time_field :window_end %>
-      <%= form.submit "Start a fill" %>
+      <%= form.submit "Create a fill", class: "mt-4" %>
     <% end %>
     <p class="muted">Leave the window blank to use the venue hours. Matching start and end means all day.</p>
-  <% else %>
-    <p class="muted">No open slot is waiting for a fill.</p>
+  </div>
+
+  <% @call.call_slots.each do |slot| %>
+    <% if (assignment = slot.current_assignment) %>
+      <%= render "assignment", slot: slot, assignment: assignment %>
+    <% end %>
   <% end %>
 
-  <% @fill_processes.each do |process| %>
-    <section>
-      <h3>
-        <%= process.slots.map { |owned_slot| owned_slot.call_slot.position_label.name }.join(", ") %>
-        · <%= process.status.humanize %>
-        <% if process.emergency? %>
-          · First response, <%= process.step_size %> at a time
-        <% end %>
-      </h3>
-      <% if process.status == "pending" %>
-        <%= button_to "Start filling", start_fill_process_path(process) %>
-      <% elsif process.emergency? && !process.finished? %>
-        <%= button_to "Run the next step", emergency_step_fill_process_path(process) %>
-      <% end %>
-      <% if process.status == "needs_more_names" %>
-        <p class="warning">Needs more names.</p>
-      <% end %>
-
-      <ol>
-        <% process.candidates.ordered.each do |candidate| %>
-          <% availability = CallAvailability.new(candidate.employee, @call) %>
-          <li>
-            <%= candidate.employee.preferred_name %>
-            · <%= availability.label %>
-            · <%= candidate.state.humanize %>
-            <% if candidate.state == "pending" %>
-              <%= button_to "Up", move_higher_fill_process_fill_candidate_path(process, candidate), method: :patch %>
-              <%= button_to "Down", move_lower_fill_process_fill_candidate_path(process, candidate), method: :patch %>
-              <%= button_to "Remove", fill_process_fill_candidate_path(process, candidate), method: :delete %>
-            <% end %>
-          </li>
-        <% end %>
-      </ol>
-
-      <%= form_with url: fill_process_fill_candidates_path(process) do %>
-        <%= label_tag "employee_id_#{process.id}", "Add a person" %>
-        <%= select_tag "employee_id", options_from_collection_for_select(venue.employees.ordered, :id, :preferred_name), include_blank: "Choose a person", id: "employee_id_#{process.id}" %>
-        <%= submit_tag "Add" %>
-      <% end %>
-
-      <% if @skills.any? %>
-        <%= form_with url: add_skill_fill_process_path(process) do %>
-          <%= label_tag "skill_id_#{process.id}", "Add a skill" %>
-          <%= select_tag "skill_id", options_from_collection_for_select(@skills, :id, :labeled_name), id: "skill_id_#{process.id}" %>
-          <%= label_tag "minimum_level_#{process.id}", "Minimum level" %>
-          <%= number_field_tag :minimum_level, 1, min: 1, max: 5, id: "minimum_level_#{process.id}" %>
-          <%= submit_tag "Add skill" %>
-        <% end %>
-      <% end %>
-
-      <% if @templates.any? %>
-        <%= form_with url: add_template_fill_process_path(process) do %>
-          <%= label_tag "template_list_id_#{process.id}", "Add a list" %>
-          <%= select_tag "template_list_id", options_from_collection_for_select(@templates, :id, :name), id: "template_list_id_#{process.id}" %>
-          <%= submit_tag "Add list" %>
-        <% end %>
-      <% end %>
-
-      <% if process.events.any? %>
-        <h4>Log</h4>
-        <ul>
-          <% process.events.recent.limit(12).each do |event| %>
-            <li>
-              <%= event.kind.humanize %>
-              <%= "· #{event.employee.preferred_name}" if event.employee %>
-              · <%= event.detail %>
-            </li>
-          <% end %>
-        </ul>
-      <% end %>
-    </section>
-  <% end %>
-  <p><%= link_to "Edit lists", template_lists_path %></p>
 </section>

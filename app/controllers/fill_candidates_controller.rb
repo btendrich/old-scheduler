@@ -1,9 +1,14 @@
 class FillCandidatesController < ApplicationController
   def create
     process = venue_process
-    employee = venue.employees.find(params[:employee_id])
-    if process.add_employee(employee).nil? && process.candidates.exists?(employee: employee)
-      redirect_to process.call, alert: "#{employee.preferred_name} is already on the list."
+    ids = Array(params[:employee_ids]).map(&:presence).compact
+    ids = [ params[:employee_id] ] if ids.empty? && params[:employee_id].present?
+    employees = venue.employees.where(id: ids).index_by { |employee| employee.id.to_s }
+    added = ids.count { |id| (employee = employees[id.to_s]) && process.add_employee(employee) }
+    if added.zero? && ids.one? && employees[ids.first.to_s]
+      redirect_to process.call, alert: "#{employees[ids.first.to_s].name} is already on the list."
+    elsif ids.empty?
+      redirect_to process.call, alert: "Choose at least one person."
     else
       redirect_to process.call
     end
@@ -18,6 +23,25 @@ class FillCandidatesController < ApplicationController
       return redirect_to call, alert: "That person has already been asked."
     end
     redirect_to call
+  end
+
+  def selected
+    process = venue_process
+    chosen = process.candidates.where(id: Array(params[:ids])).includes(:employee)
+    staying = chosen.reject { |candidate| candidate.state == "pending" }
+    chosen.select { |candidate| candidate.state == "pending" }.each(&:destroy!)
+    if staying.any?
+      names = staying.map { |candidate| candidate.employee.name }.to_sentence
+      verb = staying.one? ? "has" : "have"
+      redirect_to process.call, alert: "#{names} #{verb} already been asked."
+    else
+      redirect_to process.call
+    end
+  end
+
+  def reorder
+    saved = ListOrder.apply(venue_process.candidates.ordered, params[:ids], :position)
+    head saved ? :no_content : :unprocessable_entity
   end
 
   def move_higher

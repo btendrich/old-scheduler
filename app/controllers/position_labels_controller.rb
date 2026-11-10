@@ -5,6 +5,12 @@ class PositionLabelsController < ApplicationController
     redirect_to setup_path, alert: label.errors.full_messages.to_sentence.presence
   end
 
+  def update
+    label = venue.position_labels.find(params[:id])
+    label.update(name_param)
+    redirect_to setup_path, alert: label.errors.full_messages.to_sentence.presence
+  end
+
   def destroy
     label = venue.position_labels.find(params[:id])
     label.destroy

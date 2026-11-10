@@ -1,0 +1,25 @@
+<% if categories.any? %>
+  <ul class="m-0 list-none p-0">
+    <% categories.each do |category| %>
+      <li>
+        <button type="button" class="list-menu-button" data-action="list-search#openCategory" data-list-search-category-param="<%= category.id %>"><%= category.name %></button>
+        <ul class="m-0 list-none p-0 pl-3" hidden data-list-search-target="category" data-category="<%= category.id %>">
+          <% category.skills.each do |skill| %>
+            <li>
+              <button type="button" class="list-menu-button" data-action="list-search#openSkill" data-list-search-skill-param="<%= skill.id %>"><%= skill.name %></button>
+              <ul class="m-0 list-none p-0 pl-3" hidden data-list-search-target="skill" data-skill="<%= skill.id %>">
+                <% (1..5).each do |level| %>
+                  <li>
+                    <button type="button" class="list-menu-button" data-action="list-search#addSkill" data-list-search-skill-id-param="<%= skill.id %>" data-list-search-level-param="<%= level %>" data-list-search-label-param="<%= skill.name %>"><%= level %> or higher</button>
+                  </li>
+                <% end %>
+              </ul>
+            </li>
+          <% end %>
+        </ul>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p class="muted text-sm">No skills yet.</p>
+<% end %>

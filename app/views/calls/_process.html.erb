@@ -1,0 +1,113 @@
+<div class="fill-detail" data-call-desk-target="processDetail" data-process-id="<%= process.id %>" hidden>
+  <%= turbo_stream_from process %>
+  <div class="overflow-x-auto rounded-lg bg-white ring-1 ring-stone-200">
+    <table class="slot-table">
+      <thead>
+        <tr>
+          <th>Slot</th>
+          <th>Up now</th>
+          <th>Status</th>
+          <th>Time left</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% process.slot_statuses.each do |line| %>
+          <% label = fill_line_label(line) %>
+          <%= tag.tr class: "slot-tone-#{slot_tone(label)}" do %>
+            <td><%= line.label %></td>
+            <td>
+              <% if line.people.any? %>
+                <% line.people.each do |person| %>
+                  <div><%= person.name %></div>
+                <% end %>
+              <% else %>
+                <span class="text-stone-400">—</span>
+              <% end %>
+            </td>
+            <td><%= status_badge(label) %></td>
+            <td>
+              <% if line.people.any? { |person| person.remaining } %>
+                <% line.people.each do |person| %>
+                  <div><%= person.remaining || "—" %></div>
+                <% end %>
+              <% else %>
+                <span class="text-stone-400">—</span>
+              <% end %>
+            </td>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if process.emergency? && process.running? %>
+    <%= button_to "Run the next step", emergency_step_fill_process_path(process), class: "btn-primary mt-3 border-0" %>
+  <% end %>
+
+  <% availability = @pool.index_by { |row| row.employee.id } %>
+  <% default_list = @templates.find(&:default?) %>
+  <div class="fill-board" data-controller="fill-source" data-fill-source-process-id-value="<%= process.id %>" data-fill-source-add-url-value="<%= fill_process_fill_candidates_path(process) %>" data-fill-source-remove-url-value="<%= selected_fill_process_fill_candidates_path(process) %>">
+    <div class="list-pane">
+      <ul class="fill-tree">
+        <li class="tree-node tree-root">
+          <div class="tree-label">
+            <span class="fill-root"><%= venue.name %></span>
+          </div>
+          <ul>
+            <li class="tree-node">
+              <div class="tree-label">
+                <button type="button" class="tree-twist" data-action="fill-source#toggle" data-label="All employees" aria-expanded="false" aria-label="Expand All employees">+</button>
+                <button type="button" class="fill-branch-name" data-action="fill-source#chooseGroup" data-fill-source-group-param="all">All employees</button>
+              </div>
+              <ul hidden data-fill-source-target="group" data-group="all">
+                <% @employees.each do |employee| %>
+                  <%= render "fill_person", employee: employee, availability: availability[employee.id] %>
+                <% end %>
+              </ul>
+            </li>
+            <% ([ default_list ] + @templates.reject(&:default?)).compact.each do |list| %>
+              <li class="tree-node">
+                <div class="tree-label">
+                  <button type="button" class="tree-twist" data-action="fill-source#toggle" data-label="<%= list.name %>" aria-expanded="<%= list.default? %>" aria-label="<%= list.default? ? "Collapse" : "Expand" %> <%= list.name %>"><%= list.default? ? "−" : "+" %></button>
+                  <button type="button" class="fill-branch-name <%= "is-selected" if list.default? %>" data-action="fill-source#chooseGroup" data-fill-source-group-param="<%= list.id %>">
+                    <%= list.name %>
+                    <% if list.default? %><span class="list-default">Default</span><% end %>
+                  </button>
+                </div>
+                <ul <% unless list.default? %>hidden<% end %> data-fill-source-target="group" data-group="<%= list.id %>" <% if list.default? %>data-default-list="true"<% end %>>
+                  <% list.entries.each do |entry| %>
+                    <%= render "fill_person", employee: entry.employee, selected: list.default?, availability: availability[entry.employee_id] %>
+                  <% end %>
+                </ul>
+              </li>
+            <% end %>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="list-moves">
+      <button type="button" data-fill-source-target="addButton" data-action="fill-source#add" aria-label="Add to fill" <% if default_list.nil? || default_list.entries.empty? %>disabled<% end %>>&gt;&gt;</button>
+      <button type="button" data-fill-source-target="removeButton" data-action="fill-source#remove" aria-label="Remove from fill" disabled>&lt;&lt;</button>
+    </div>
+
+    <div class="list-pane">
+      <div class="list-pane-head"><span>Fill list</span></div>
+      <ol class="m-0 min-h-48 list-none p-0" data-fill-source-target="memberList" data-controller="sortable" data-sortable-url-value="<%= reorder_fill_process_fill_candidates_path(process) %>" data-sortable-group-value="fill" data-sortable-put-value="false">
+        <% process.candidates.ordered.each do |candidate| %>
+          <% tone, label = fill_candidate_mark(candidate, availability[candidate.employee_id]) %>
+          <%= tag.li class: "list-member fill-candidate fill-tone-#{tone}", data: { action: "click->fill-source#chooseMember", draggable: true, sortable_id: candidate.id, pending: candidate.state == "pending", name: candidate.employee.name } do %>
+            <%= drag_handle %>
+            <span class="min-w-0 flex-1 truncate font-medium"><%= candidate.employee.name %></span>
+            <span class="shrink-0 text-xs text-stone-600"><%= label %></span>
+          <% end %>
+        <% end %>
+      </ol>
+    </div>
+  </div>
+
+  <%= render "fill_log", process: process %>
+  <% unless process.running? %>
+    <%= button_to "Delete fill", process, method: :delete, form: { class: "mt-4", data: { turbo_confirm: "Delete this fill? The slots stay on the call." } } %>
+  <% end %>
+</div>

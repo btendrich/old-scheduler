@@ -1,11 +1,14 @@
 <%= form_with model: employee do |form| %>
   <%= render "shared/errors", record: employee %>
 
-  <%= form.label :preferred_name %>
-  <%= form.text_field :preferred_name, required: true %>
+  <%= form.label :last_name %>
+  <%= form.text_field :last_name, required: true, autocomplete: "family-name" %>
 
-  <%= form.label :legal_name %>
-  <%= form.text_field :legal_name %>
+  <%= form.label :first_name %>
+  <%= form.text_field :first_name, required: true, autocomplete: "given-name" %>
+
+  <%= form.label :preferred_name, "Preferred name" %>
+  <%= form.text_field :preferred_name, autocomplete: "nickname" %>
 
   <%= form.label :mobile %>
   <%= form.telephone_field :mobile, required: true %>

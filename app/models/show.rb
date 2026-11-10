@@ -8,6 +8,10 @@ class Show < ApplicationRecord
 
   scope :for_venue, ->(venue) { joins(:client).where(clients: { venue_id: venue.id }) }
 
+  def venue
+    client&.venue
+  end
+
   def venue_id
     client&.venue_id
   end

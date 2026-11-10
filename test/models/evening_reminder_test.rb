@@ -47,7 +47,7 @@ class EveningReminderTest < ActiveSupport::TestCase
     assert_equal 1, employees(:alex).messages.where("body LIKE ?", "%Reminder:%").count
   end
 
-  test "someone who already has a question is skipped" do
+  test "someone who already has a question gets the reminder queued" do
     assignment = call_slots(:deck_slot).assignments.create!(
       employee: employees(:alex), source: "manual", confirmation: "unconfirmed"
     )
@@ -57,6 +57,13 @@ class EveningReminderTest < ActiveSupport::TestCase
 
     assert_equal "manual_confirmation", employees(:alex).open_question.kind
     assert_equal 0, employees(:alex).messages.where("body LIKE ?", "%Reminder:%").count
+    assert employees(:alex).questions.queued.exists?(kind: "evening_reminder")
+    assert_match "1 more question waiting", employees(:alex).messages.last.body
+
+    Messaging::Receive.new.call(employee: employees(:alex), body: "YES")
+
+    assert_equal "evening_reminder", employees(:alex).reload.open_question.kind
+    assert_equal 1, employees(:alex).messages.where("body LIKE ?", "%Reminder:%").count
   end
 
   test "YES confirms an unconfirmed booking once and does not send the booking text again" do
@@ -110,7 +117,7 @@ class EveningReminderTest < ActiveSupport::TestCase
     assert_match "You're off Saturday Night, Sun 10/18 9:00 AM", employees(:alex).messages.last.body
     notices = BossNotice.order(:id)
     assert_equal [ "555-0900", "555-0901" ], notices.map(&:mobile)
-    assert_equal "Alex can't make Saturday Night, Sun 10/18 9:00 AM, Deck.", notices.first.body
+    assert_equal "Rivera, Alex can't make Saturday Night, Sun 10/18 9:00 AM, Deck.", notices.first.body
   end
 
   test "no reply leaves them on the call and does not text the bosses" do

@@ -1,4 +1,7 @@
 class Venue < ApplicationRecord
+  skip_venue_desk!
+  broadcasts_refreshes
+
   has_many :users, dependent: :restrict_with_exception
   has_many :employees
   has_many :skill_categories
@@ -8,10 +11,16 @@ class Venue < ApplicationRecord
   has_many :position_labels
   has_many :template_lists
   has_many :bosses, dependent: :destroy
+  has_many :audit_logs, dependent: :destroy
 
   validates :name, presence: true
   validates :time_zone, presence: true
   validate :time_zone_is_known
+
+  # Open desk pages poll this. Child rows touch the venue so a booking or reply changes it.
+  def live_revision
+    updated_at.utc.iso8601(6)
+  end
 
   # A window whose start and end match is all day. Offers wait; replies do not.
   def send_window_open?(at = Time.current, start_at: send_window_start, finish_at: send_window_end)
